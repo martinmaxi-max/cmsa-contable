@@ -1,0 +1,2772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sistema Contable</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f3f4f6;color:#111;}
+.nav{background:#0f172a;display:flex;align-items:center;padding:0 12px;min-height:46px;gap:2px;flex-wrap:wrap;}
+.nav-title{color:#fff;font-weight:800;font-size:13px;margin-right:8px;white-space:nowrap;}
+.nav-btn{background:transparent;color:rgba(255,255,255,.5);border:none;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;padding:6px 9px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;}
+.nav-btn.active{background:rgba(255,255,255,.12);color:#fff;border-bottom-color:#60a5fa;}
+.mes-sel{background:#1e293b;color:#fff;border:1px solid #334155;border-radius:7px;padding:4px 10px;font-size:12px;margin-left:auto;}
+.page{max-width:1200px;margin:0 auto;padding:16px 14px;}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.toolbar h2{font-size:16px;font-weight:700;color:#111;}
+.cuadre{font-size:12px;font-weight:700;padding:5px 12px;border-radius:6px;border:1px solid;}
+.cuadre.ok{background:#dcfce7;color:#166534;border-color:#86efac;}
+.cuadre.mal{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
+.btn{background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:7px;padding:5px 13px;cursor:pointer;font-size:12px;font-weight:600;transition:background .1s;}
+.btn:hover{background:#f9fafb;}
+.btn.primary{background:#1a56db;color:#fff;border-color:#1a56db;}
+.btn.primary:hover{background:#1546b8;}
+.btn.outline-v{color:#6366f1;border-color:#a5b4fc;background:transparent;}
+.btn.danger{color:#b91c1c;border-color:#fca5a5;background:transparent;}
+.btn.sm{padding:3px 10px;font-size:11px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.empty{text-align:center;padding:48px 20px;color:#6b7280;font-size:13px;background:#fff;border-radius:10px;border:1px dashed #d1d5db;}
+.card{background:#fff;border-radius:10px;border:1px solid #e5e7eb;margin-bottom:10px;}
+.card-head{background:#f8fafc;border-bottom:1px solid #e5e7eb;padding:9px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-radius:10px 10px 0 0;}
+.badge{display:inline-block;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;}
+.badge.bl{background:#dbeafe;color:#1e40af;}
+.badge.gn{background:#dcfce7;color:#166534;}
+.badge.am{background:#fef3c7;color:#92400e;}
+.badge.gr{background:#f1f5f9;color:#475569;}
+.badge.rd{background:#fee2e2;color:#991b1b;}
+.badge.pu{background:#ede9fe;color:#5b21b6;}
+.badge.cy{background:#cffafe;color:#0e7490;}
+select.tipo-sel{border:1px solid #d1d5db;border-radius:6px;padding:3px 8px;font-size:11px;background:#fff;flex:1;min-width:180px;max-width:360px;}
+/* TABLA DE LÍNEAS */
+table.lt{width:100%;border-collapse:collapse;table-layout:fixed;}
+table.lt th{background:#f1f5f9;padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;text-align:left;}
+table.lt td{padding:3px 5px;border-bottom:1px solid #f9fafb;vertical-align:middle;}
+.tb{width:28px;height:24px;border-radius:4px;border:none;cursor:pointer;font-weight:800;font-size:11px;}
+.tb.d{background:#dcfce7;color:#166534;}.tb.h{background:#fef3c7;color:#92400e;}.tb.n{background:#f1f5f9;color:#64748b;}
+.tb.formula{background:#ede9fe;color:#5b21b6;font-size:10px;}
+input.ci{width:100%;border:1px solid #e5e7eb;border-radius:5px;padding:4px 8px;font-size:12px;background:#fff;color:#111;outline:none;}
+input.ci:focus{border-color:#93c5fd;}
+input.ii{width:100%;border:1px solid #e5e7eb;border-radius:5px;padding:4px 8px;font-size:12px;text-align:right;font-family:monospace;background:#fff;color:#111;outline:none;}
+input.ii:focus{border-color:#93c5fd;}
+input.ii.d{color:#059669;}
+input.ii.h{color:#b45309;}
+input.ii.formula{background:#faf5ff;color:#7c3aed;font-style:italic;}
+input.ii:disabled{background:#f9fafb;color:#9ca3af;cursor:not-allowed;}
+/* Selector código chino en línea */
+select.cc-sel{width:100%;border:1px solid #e0e7ff;border-radius:5px;padding:3px 5px;font-size:10px;background:#f5f3ff;color:#4338ca;outline:none;}
+select.cc-sel:focus{border-color:#818cf8;}
+/* AUTOCOMPLETE */
+.ac-wrap{position:relative;width:100%;}
+.ac-list{position:absolute;top:100%;left:0;right:0;z-index:600;background:#fff;border:1px solid #d1d5db;border-radius:7px;box-shadow:0 4px 14px rgba(0,0,0,.1);max-height:200px;overflow-y:auto;}
+.ac-it{padding:6px 11px;font-size:12px;cursor:pointer;color:#111;}
+.ac-it:hover,.ac-it.sel{background:#eff6ff;}
+/* DROPDOWN */
+.drop-wrap{position:relative;}
+.drop{position:absolute;right:0;top:calc(100% + 4px);z-index:500;background:#fff;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.13);min-width:300px;max-height:380px;overflow-y:auto;}
+.di{padding:8px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f9fafb;}
+.di:hover{background:#eff6ff;}
+/* MAYORES */
+table.mt{width:100%;border-collapse:collapse;}
+table.mt th{background:#f1f5f9;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap;}
+table.mt th:first-child,table.mt th:nth-child(2){text-align:left;}
+table.mt td{padding:7px 10px;font-size:12px;border-bottom:1px solid #f9fafb;text-align:right;font-family:monospace;}
+table.mt td:first-child,table.mt td:nth-child(2){text-align:left;font-family:system-ui;font-size:12px;}
+table.mt tr:nth-child(even){background:#f8fafc;}
+table.mt .tot-row{background:#f1f5f9;border-top:2px solid #e2e8f0;font-weight:800;}
+/* CUENTAS */
+table.ct{width:100%;border-collapse:collapse;}
+table.ct th{background:#f1f5f9;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;}
+table.ct td{padding:7px 10px;font-size:12px;border-bottom:1px solid #f9fafb;}
+table.ct tr:nth-child(even){background:#f8fafc;}
+input.si{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:10px;outline:none;color:#111;}
+input.fi{border:1px solid #d1d5db;border-radius:7px;padding:6px 10px;font-size:13px;outline:none;color:#111;}
+/* SALDOS INICIALES */
+table.sit{width:100%;border-collapse:collapse;}
+table.sit th{background:#f1f5f9;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;}
+table.sit td{padding:5px 8px;border-bottom:1px solid #f9fafb;font-size:12px;}
+table.sit tr:nth-child(even){background:#f8fafc;}
+input.si2{border:1px solid #e5e7eb;border-radius:5px;padding:4px 8px;font-size:12px;width:140px;text-align:right;font-family:monospace;outline:none;}
+input.si2:focus{border-color:#93c5fd;}
+/* BARRA DE CONTEXTO: empresa / ejercicio / periodo */
+.ctx{background:#1e293b;display:flex;align-items:center;gap:7px;padding:6px 16px;flex-wrap:wrap;border-bottom:1px solid #334155;}
+.ctx-lb{color:#94a3b8;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;}
+.ctx-sel{background:#0f172a;color:#fff;border:1px solid #334155;border-radius:6px;padding:3px 9px;font-size:12px;max-width:280px;}
+.ctx-sel:focus{outline:none;border-color:#60a5fa;}
+.save-ind{color:#64748b;font-size:11px;margin-left:auto;white-space:nowrap;padding-right:2px;}
+.save-ind.err{color:#fca5a5;font-weight:700;}
+.save-ind.ok{color:#86efac;}
+.save-ind.otro{color:#fcd34d;font-weight:700;}
+.login-ov{position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:9000;}
+.login-bx{background:#fff;border-radius:14px;padding:28px 26px;width:330px;box-shadow:0 10px 40px rgba(0,0,0,.35);}
+.login-bx h1{font-size:16px;margin-bottom:4px;color:#111;}
+.login-bx p{font-size:12px;color:#6b7280;margin-bottom:16px;}
+.login-bx input{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:9px;outline:none;}
+.login-bx input:focus{border-color:#60a5fa;}
+.login-bx button{width:100%;background:#1a56db;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;}
+.login-bx button:hover{background:#1546b8;}
+.lg-msg{font-size:12px;color:#6b7280;margin-top:10px;min-height:16px;text-align:center;}
+.lg-msg.err{color:#b91c1c;font-weight:600;}
+.mini{font-size:11px;color:#6b7280;}
+.subtabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap;border-bottom:1px solid #e5e7eb;padding-bottom:8px;}
+.subtab{background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;color:#374151;cursor:pointer;}
+.subtab:hover{background:#f9fafb;}
+.subtab.on{background:#1a56db;border-color:#1a56db;color:#fff;}
+table.emp{width:100%;border-collapse:collapse;}
+table.emp th{background:#f1f5f9;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #e2e8f0;text-align:left;}
+table.emp td{padding:6px 10px;font-size:12px;border-bottom:1px solid #f9fafb;}
+table.emp tr:nth-child(even){background:#f8fafc;}
+</style>
+</head>
+<body>
+<div class="login-ov" id="login" style="display:none">
+  <div class="login-bx">
+    <h1>&#x1F4D2; Sistema Contable</h1>
+    <p>Ingresá con tu usuario para acceder a los datos.</p>
+    <input id="lg-mail" type="email" placeholder="Correo" autocomplete="username" onkeydown="loginTecla(event)">
+    <input id="lg-pass" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="loginTecla(event)">
+    <button onclick="loginEntrar()">Entrar</button>
+    <div class="lg-msg" id="lg-msg"></div>
+  </div>
+</div>
+<div class="nav">
+  <span class="nav-title">&#x1F4D2; Sistema Contable</span>
+  <button class="nav-btn active" data-v="carga" onclick="sv('carga')">Asientos</button>
+  <button class="nav-btn" data-v="chino" onclick="sv('chino')">Formato Chino</button>
+  <button class="nav-btn" data-v="mayores" onclick="sv('mayores')">Mayores</button>
+  <button class="nav-btn" data-v="mayorchino" onclick="sv('mayorchino')">Mayor Chino</button>
+  <button class="nav-btn" data-v="saldos" onclick="sv('saldos')">Saldos</button>
+  <button class="nav-btn" data-v="cuentas" onclick="sv('cuentas')">Cuentas</button>
+  <button class="nav-btn" data-v="importar" onclick="sv('importar')">Importar</button>
+  <button class="nav-btn" data-v="empresas" onclick="sv('empresas')">Empresas</button>
+  <button class="nav-btn" data-v="instructivo" onclick="sv('instructivo')">Instructivo</button>
+  <span class="save-ind" id="saveInd"></span>
+  <button class="nav-btn" id="btnSalir" style="display:none" onclick="salir()" title="Cerrar sesión">Salir</button>
+</div>
+<div class="ctx" id="ctx"></div>
+<div id="app" class="page"></div>
+
+<script>
+// ─── DATOS BASE ───────────────────────────────────────────────────────────────
+const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+// (las fechas de cierre de cada período se calculan del ejercicio activo: ver fechaFinPer)
+
+// ─── PLAN DE CUENTAS CHINO (código alternativo → descripción agrupada) ────────
+// Basado en el plan de cuentas CMAR ejercicio 17
+// Plan de cuentas chino (CMAR ej. 17) — código alternativo = código de cuenta sin puntos
+// j = código jerárquico original · imp = imputable (false = cuenta totalizadora)
+const PLAN_CHINO=[
+  {c:"100000",d:"ACTIVO",j:"1.0.0.00.0",imp:false},
+  {c:"110000",d:"ACTIVO CORRIENTE",j:"1.1.0.00.0",imp:false},
+  {c:"111000",d:"DISPONIBILIDADES",j:"1.1.1.00.0",imp:false},
+  {c:"111010",d:"CAJA",j:"1.1.1.01.0",imp:true},
+  {c:"111020",d:"BANCOS",j:"1.1.1.02.0",imp:false},
+  {c:"111021",d:"BANCO DE SAN JUAN S.A.",j:"1.1.1.02.1",imp:true},
+  {c:"111022",d:"BANCO NACION",j:"1.1.1.02.2",imp:true},
+  {c:"111023",d:"BANCO SANTANDER RIO",j:"1.1.1.02.3",imp:true},
+  {c:"111024",d:"BANCO DE GALICIA",j:"1.1.1.02.4",imp:true},
+  {c:"111025",d:"DEPOSITOS A PLAZO FIJO Y FCI",j:"1.1.1.02.5",imp:true},
+  {c:"111026",d:"BANCO HIPOTECARIO",j:"1.1.1.02.6",imp:true},
+  {c:"111027",d:"BANCO CREDICOOP",j:"1.1.1.02.7",imp:true},
+  {c:"111030",d:"MONEDA EXTRANJERA",j:"1.1.1.03.0",imp:true},
+  {c:"112000",d:"INVERSIONES",j:"1.1.2.00.0",imp:true},
+  {c:"113000",d:"CREDITOS",j:"1.1.3.00.0",imp:false},
+  {c:"113010",d:"DEUDORES POR VENTAS",j:"1.1.3.01.0",imp:true},
+  {c:"113020",d:"MAXIMILIANO MARTIN",j:"1.1.3.02.0",imp:true},
+  {c:"113030",d:"RODOLFO MARTIN",j:"1.1.3.03.0",imp:true},
+  {c:"113040",d:"CARLOS MARTIN",j:"1.1.3.04.0",imp:true},
+  {c:"113050",d:"ANTICIPO DE SUELDOS",j:"1.1.3.05.0",imp:true},
+  {c:"113060",d:"DGI RETENCIONES GANANCIAS",j:"1.1.3.06.0",imp:true},
+  {c:"113070",d:"D.G.R. RET. Y PERC. II.BB.",j:"1.1.3.07.0",imp:true},
+  {c:"113080",d:"DGI - RET. Y PERC. IVA",j:"1.1.3.08.0",imp:true},
+  {c:"113090",d:"AFIP - PAGO A CUENTA I.G.M.P.",j:"1.1.3.09.0",imp:true},
+  {c:"113100",d:"ANTICIPO COMPRA BIENES DE USO",j:"1.1.3.10.0",imp:true},
+  {c:"113110",d:"PAGO A CUENTA IMP. DEB. Y CRED.",j:"1.1.3.11.0",imp:true},
+  {c:"113120",d:"IVA - PAGO A CUENTA SUELDOS",j:"1.1.3.12.0",imp:true},
+  {c:"113130",d:"ANTICIPOS GANANCIAS",j:"1.1.3.13.0",imp:true},
+  {c:"113140",d:"CREDITOS FISCALES NO TOMADOS DDJJ",j:"1.1.3.14.0",imp:true},
+  {c:"113150",d:"RETENCIONES S.U.S.S.",j:"1.1.3.15.0",imp:true},
+  {c:"113160",d:"VALORES DIFERIDOS A COBRAR",j:"1.1.3.16.0",imp:true},
+  {c:"113170",d:"CUPONES TARJETAS A COBRAS",j:"1.1.3.17.0",imp:true},
+  {c:"114000",d:"BIENES DE CAMBIO",j:"1.1.4.00.0",imp:false},
+  {c:"114010",d:"MERCADERIAS",j:"1.1.4.01.0",imp:true},
+  {c:"120000",d:"ACTIVO NO CORRIENTE",j:"1.2.0.00.0",imp:false},
+  {c:"121000",d:"INVERSIONES",j:"1.2.1.00.0",imp:true},
+  {c:"122000",d:"CREDITOS",j:"1.2.2.00.0",imp:true},
+  {c:"123000",d:"BIENES DE USO",j:"1.2.3.00.0",imp:false},
+  {c:"123010",d:"RODADOS",j:"1.2.3.01.0",imp:true},
+  {c:"123020",d:"INSTALACIONES",j:"1.2.3.02.0",imp:true},
+  {c:"123030",d:"MUEBLES Y UTILES",j:"1.2.3.03.0",imp:true},
+  {c:"123040",d:"AMORT. ACUM. BIENES DE USO",j:"1.2.3.04.0",imp:true},
+  {c:"123050",d:"INMUEBLES",j:"1.2.3.05.0",imp:false},
+  {c:"123051",d:"TERRENOS",j:"1.2.3.05.1",imp:true},
+  {c:"123052",d:"INMUEBLES URBANOS",j:"1.2.3.05.2",imp:true},
+  {c:"123053",d:"OBRAS EN CURSO GALPONES",j:"1.2.3.05.3",imp:true},
+  {c:"123054",d:"INMUEBLES RURALES",j:"1.2.3.05.4",imp:true},
+  {c:"123060",d:"SOFTWARE",j:"1.2.3.06.0",imp:true},
+  {c:"200000",d:"PASIVO",j:"2.0.0.00.0",imp:false},
+  {c:"210000",d:"PASIVO CORRIENTE",j:"2.1.0.00.0",imp:false},
+  {c:"211000",d:"DEUDAS COMERCIALES",j:"2.1.1.00.0",imp:false},
+  {c:"211010",d:"PROVEEDORES",j:"2.1.1.01.0",imp:true},
+  {c:"211020",d:"ANTICIPOS DE CLIENTES",j:"2.1.1.02.0",imp:true},
+  {c:"211030",d:"HONORARIOS A PAGAR",j:"2.1.1.03.0",imp:true},
+  {c:"211040",d:"VALORES DIFERIDOS A PAGAR",j:"2.1.1.04.0",imp:true},
+  {c:"212000",d:"DEUDAS FINANCIERAS",j:"2.1.2.00.0",imp:false},
+  {c:"212010",d:"PRESTAMOS BCO. SANTANDER",j:"2.1.2.01.0",imp:true},
+  {c:"212020",d:"PRESTAMO BANCO NACION",j:"2.1.2.02.0",imp:true},
+  {c:"212030",d:"PRESTAMOS BCO. GALICIA",j:"2.1.2.03.0",imp:true},
+  {c:"213000",d:"DEUDAS LABORALES",j:"2.1.3.00.0",imp:false},
+  {c:"213010",d:"SUELDOS Y JORNALES A PAGAR",j:"2.1.3.01.0",imp:true},
+  {c:"213020",d:"CARGAS SOCIALES A PAGAR",j:"2.1.3.02.0",imp:true},
+  {c:"213030",d:"MORATORIA PREVISIONAL H021462",j:"2.1.3.03.0",imp:true},
+  {c:"213040",d:"SINDICATOS A PAGAR",j:"2.1.3.04.0",imp:true},
+  {c:"214000",d:"DEUDAS FISCALES",j:"2.1.4.00.0",imp:false},
+  {c:"214010",d:"AFIP - IVA SALDO TECNICO",j:"2.1.4.01.0",imp:true},
+  {c:"214020",d:"DGR IIBB A PAGAR",j:"2.1.4.02.0",imp:true},
+  {c:"214030",d:"AFIP - MORATORIA IMPOSITIVA",j:"2.1.4.03.0",imp:true},
+  {c:"214040",d:"AFIP - I.G.M.P. A PAGAR",j:"2.1.4.04.0",imp:true},
+  {c:"214050",d:"AFIP - GANANCIAS",j:"2.1.4.05.0",imp:true},
+  {c:"214070",d:"PASIVO IMPUESTO DIFERIDO",j:"2.1.4.07.0",imp:true},
+  {c:"214080",d:"IVA SALDO DE LIBRE DISPONIBILIDAD",j:"2.1.4.08.0",imp:true},
+  {c:"214090",d:"BS. PERS. SUSTITUTOS A PAGAR",j:"2.1.4.09.0",imp:true},
+  {c:"215000",d:"OTROS PASIVOS",j:"2.1.5.00.0",imp:false},
+  {c:"215010",d:"PRESTAMOS SOCIOS",j:"2.1.5.01.0",imp:true},
+  {c:"215020",d:"OTRAS DEUDAS",j:"2.1.5.02.0",imp:true},
+  {c:"220000",d:"PATRIMONIO NETO",j:"2.2.0.00.0",imp:false},
+  {c:"221000",d:"CAPITAL",j:"2.2.1.00.0",imp:false},
+  {c:"221010",d:"CAPITAL SOCIAL",j:"2.2.1.01.0",imp:true},
+  {c:"221020",d:"AJUSTES AL CAPITAL",j:"2.2.1.02.0",imp:true},
+  {c:"221030",d:"APORTES IRREVOCABLES DE CAPITAL",j:"2.2.1.03.0",imp:true},
+  {c:"222000",d:"RESERVAS",j:"2.2.2.00.0",imp:false},
+  {c:"222010",d:"RESERVA LEGAL",j:"2.2.2.01.0",imp:true},
+  {c:"222020",d:"RESERVA POR REV. TECNICO",j:"2.2.2.02.0",imp:true},
+  {c:"223000",d:"RESULTADOS",j:"2.2.3.00.0",imp:false},
+  {c:"223010",d:"RESULTADOS NO ASIGNADOS",j:"2.2.3.01.0",imp:true},
+  {c:"223020",d:"PERDIDAS Y GANANCIAS",j:"2.2.3.02.0",imp:true},
+  {c:"223030",d:"AREA",j:"2.2.3.03.0",imp:true},
+  {c:"300000",d:"INGRESOS",j:"3.0.0.00.0",imp:false},
+  {c:"310000",d:"EXPLOTACION COMERCIAL E IND",j:"3.1.0.00.0",imp:false},
+  {c:"311000",d:"EXPLOTACION COMERCIAL",j:"3.1.1.00.0",imp:false},
+  {c:"311010",d:"VENTAS DE MAT. ELECT. E ILUMINACION",j:"3.1.1.01.0",imp:true},
+  {c:"311020",d:"VENTAS DE OTROS MATERIALES",j:"3.1.1.02.0",imp:true},
+  {c:"320000",d:"INGRESOS VARIOS",j:"3.2.0.00.0",imp:false},
+  {c:"321000",d:"OTROS INGRESOS",j:"3.2.1.00.0",imp:false},
+  {c:"321010",d:"INTERESES GANADOS",j:"3.2.1.01.0",imp:true},
+  {c:"321020",d:"DESC. OBTENIDOS",j:"3.2.1.02.0",imp:true},
+  {c:"321030",d:"RDO. VENTA BIENES DE USO",j:"3.2.1.03.0",imp:true},
+  {c:"321040",d:"DIF DE CAMBIO",j:"3.2.1.04.0",imp:true},
+  {c:"321080",d:"OTROS INGRESOS",j:"3.2.1.08.0",imp:true},
+  {c:"322000",d:"INGRESOS TRANSITORIOS",j:"3.2.2.00.0",imp:false},
+  {c:"322010",d:"DEBITO FISCAL IVA",j:"3.2.2.01.0",imp:true},
+  {c:"400000",d:"EGRESOS",j:"4.0.0.00.0",imp:false},
+  {c:"410000",d:"COSTOS",j:"4.1.0.00.0",imp:false},
+  {c:"411000",d:"COSTO DE VENTAS",j:"4.1.1.00.0",imp:false},
+  {c:"411010",d:"COSTO DE VENTAS",j:"4.1.1.01.0",imp:true},
+  {c:"420000",d:"GASTOS",j:"4.2.0.00.0",imp:false},
+  {c:"421000",d:"GASTOS EXP. COMERCIAL",j:"4.2.1.00.0",imp:true},
+  {c:"422000",d:"GASTOS EXP. AGRICOLA",j:"4.2.2.00.0",imp:false},
+  {c:"422010",d:"SUELDOS Y JORNALES",j:"4.2.2.01.0",imp:true},
+  {c:"422020",d:"CARGAS SOCIALES",j:"4.2.2.02.0",imp:true},
+  {c:"422030",d:"OTROS GASTOS EXPLOTACION AGRICOLA",j:"4.2.2.03.0",imp:true},
+  {c:"422040",d:"ENERGIA ELECTRICA Y TELEFONO",j:"4.2.2.04.0",imp:true},
+  {c:"422050",d:"COMBUSTIBLES Y LUBRICANTES",j:"4.2.2.05.0",imp:true},
+  {c:"422060",d:"IMPUESTOS Y TASAS",j:"4.2.2.06.0",imp:true},
+  {c:"422070",d:"REPARACION BIENES DE USO",j:"4.2.2.07.0",imp:true},
+  {c:"422080",d:"SEGUROS",j:"4.2.2.08.0",imp:true},
+  {c:"422090",d:"AMORTIZACION BIENES DE USO",j:"4.2.2.09.0",imp:true},
+  {c:"422100",d:"FLETES Y ACARREOS",j:"4.2.2.10.0",imp:true},
+  {c:"422110",d:"GASTOS DE COSECHA",j:"4.2.2.11.0",imp:true},
+  {c:"422120",d:"FRANQUEOS Y CORRESPONDENCIA",j:"4.2.2.12.0",imp:true},
+  {c:"422130",d:"ABONOS Y FERTILIZANTES",j:"4.2.2.13.0",imp:true},
+  {c:"423000",d:"GASTOS COMERCIALIZACION",j:"4.2.3.00.0",imp:false},
+  {c:"423010",d:"SUELDOS Y JORNALES",j:"4.2.3.01.0",imp:true},
+  {c:"423020",d:"OTROS GASTOS DE COMERC.",j:"4.2.3.02.0",imp:true},
+  {c:"423030",d:"GASTOS DE VIAJES",j:"4.2.3.03.0",imp:true},
+  {c:"423040",d:"COMISIONES",j:"4.2.3.04.0",imp:true},
+  {c:"423050",d:"CARGAS SOCIALES",j:"4.2.3.05.0",imp:true},
+  {c:"423060",d:"COMBUSTIBLES Y LUBRICANTES",j:"4.2.3.06.0",imp:true},
+  {c:"423070",d:"ENENRGIA ELEC. Y TELEFONO",j:"4.2.3.07.0",imp:true},
+  {c:"423080",d:"IMPUESTOS Y TASAS",j:"4.2.3.08.0",imp:true},
+  {c:"423090",d:"REPARACION BS. DE USO",j:"4.2.3.09.0",imp:true},
+  {c:"423100",d:"SEGUROS",j:"4.2.3.10.0",imp:true},
+  {c:"423110",d:"FLETES Y ACARREOS",j:"4.2.3.11.0",imp:true},
+  {c:"423120",d:"AMORT. BIENES DE USO",j:"4.2.3.12.0",imp:true},
+  {c:"423130",d:"PUBLICIDAD",j:"4.2.3.13.0",imp:true},
+  {c:"423140",d:"IMPUESTO A LAS GANANCIAS",j:"4.2.3.14.0",imp:true},
+  {c:"424000",d:"GASTOS DE ADMINISTRACION",j:"4.2.4.00.0",imp:false},
+  {c:"424010",d:"SUELDOS Y JORNALES",j:"4.2.4.01.0",imp:true},
+  {c:"424020",d:"OTROS GASTOS DE ADMINIST.",j:"4.2.4.02.0",imp:true},
+  {c:"424030",d:"GASTOS DE LIMPIEZA",j:"4.2.4.03.0",imp:true},
+  {c:"424040",d:"SUSC., AVISOS Y CUOTAS SOC.",j:"4.2.4.04.0",imp:true},
+  {c:"424050",d:"GASTOS REFRIGERIO",j:"4.2.4.05.0",imp:true},
+  {c:"424060",d:"CARGAS SOCIALES",j:"4.2.4.06.0",imp:true},
+  {c:"424070",d:"ALQUILERES",j:"4.2.4.07.0",imp:true},
+  {c:"424080",d:"ENERGIA ELEC. Y TELEFONO",j:"4.2.4.08.0",imp:true},
+  {c:"424090",d:"IMPUESTOS Y TASAS",j:"4.2.4.09.0",imp:true},
+  {c:"424100",d:"HONORARIOS",j:"4.2.4.10.0",imp:true},
+  {c:"424110",d:"REPARACION BS. DE USO",j:"4.2.4.11.0",imp:true},
+  {c:"424120",d:"UTILES DE ESCRITORIO",j:"4.2.4.12.0",imp:true},
+  {c:"424130",d:"AMORTIZACION BS. DE USO",j:"4.2.4.13.0",imp:true},
+  {c:"424140",d:"FRANQUEOS Y CORRESPONDENCIAS",j:"4.2.4.14.0",imp:true},
+  {c:"425000",d:"GASTOS FINANCIEROS",j:"4.2.5.00.0",imp:false},
+  {c:"425010",d:"INTERESES",j:"4.2.5.01.0",imp:true},
+  {c:"425020",d:"OTROS GASTOS FINANCIEROS",j:"4.2.5.02.0",imp:true},
+  {c:"426000",d:"EGRESOS TRANSITORIOS",j:"4.2.6.00.0",imp:false},
+  {c:"426010",d:"CREDITO FISCAL IVA",j:"4.2.6.01.0",imp:true},
+  {c:"426020",d:"RECPAM",j:"4.2.6.02.0",imp:true},
+  {c:"426030",d:"RESULTADO EJERCICIO",j:"4.2.6.03.0",imp:true},
+  {c:"XXXXX",d:"(Sin código alternativo)",j:"",imp:true},
+];
+
+// Saldos iniciales manuales (editables desde la pestaña Saldos Iniciales)
+const SALDOS_CMSA = {"AJUSTE DE CAPITAL":{d:0,h:22123616.48},"SOFTWARE":{d:28737664.75,h:0},"AMORT. ACUM. BIENES DE USO":{d:0,h:143395646.18},"BANCO SANTANDERCTA. CTE.":{d:134170775.91,h:0},"BANCO CREDICOOP CTA CTE":{d:18554363.3,h:0},"BANCO GALICIA CTA. CTE.":{d:696375.76,h:0},"BIENES DE CAMBIO":{d:680155620.27,h:0},"CAJA":{d:1448527.97,h:0},"CAPITAL SOCIAL":{d:0,h:90000},"CARGAS SOCIALES A PAGAR":{d:0,h:10825024.15},"SEC A PAGAR":{d:0,h:701768.62},"D.G.R. INGRESOS BRUTOS A PAGAR":{d:0,h:5605407.71},"DEUDORES POR VENTAS":{d:56908959.11,h:0},"FAECYS A PAGAR":{d:0,h:173133.73},"BANCO SANTANDER PRESTAMO 614":{d:0,h:19452372.39},"BANCO SANTANDER PRESTAMO 406":{d:0,h:171860883.68},"I.V.A. A PAGAR":{d:0,h:2008221.22},"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)":{d:29076946.45,h:0},"PLAN DE PAGOS AFIP 813397":{d:0,h:4640980.6},"PLAN DE PAGOS AFIP T914705":{d:0,h:11957405.02},"IMPUESTO A LAS GANANCIAS":{d:0,h:29220177.02},"INACAP A PAGAR":{d:0,h:103316.23},"GALPONES (OBRA EN CURSO)":{d:25743305.07,h:0},"INSTALACIONES":{d:24638119.61,h:0},"INMUEBLES":{d:232768150.36,h:0},"MUEBLES Y UTILES":{d:10285151.92,h:0},"PLAN DE AHORRO RODADOS":{d:17590129.35,h:0},"RESULTADO DEL EJERCICIO":{d:37131679.37,h:0},"PASIVO IMPUESTO DIFERIDO":{d:0,h:79391011.72},"TERRENOS":{d:97181130.68,h:0},"PROVEEDORES":{d:0,h:193011721.99},"RESULTADOS NO ASIGNADOS":{d:0,h:729201299.43},"RETENCIONES GANANCIAS":{d:21213181,h:0},"APORTES IRREVOCABLES":{d:0,h:65210753.34},"RETENCIONES SUSS":{d:1401255.08,h:0},"RESERVA LEGAL":{d:0,h:465948.12},"RODADOS":{d:66362272.94,h:0},"ANTICIPOS DE GANANCIAS":{d:5375078.72,h:0}};
+// Saldos iniciales del ejercicio activo (apunta a DB.saldos[ejercicio])
+let SALDOS_INIT={};
+
+const MC_BASE=[
+  {n:"CAJA",c:"111010",cc:"111010"},{n:"BANCO SANTANDERCTA. CTE.",c:"111023",cc:"111023"},{n:"BANCO GALICIA CTA. CTE.",c:"111024",cc:"111024"},
+  {n:"BANCO CREDICOOP CTA CTE",c:"111025",cc:"111027"},{n:"DEUDORES POR VENTAS",c:"113010",cc:"113010"},
+  {n:"CTA PARTICULAR CARLOS MARTIN",c:"113020",cc:"113040"},{n:"CTA PARTICULAR MAXIMILIANO MARTIN",c:"113030",cc:"113020"},
+  {n:"CTA PARTICULAR RODOLFO MARTIN",c:"113040",cc:"113030"},{n:"RETENCIONES GANANCIAS",c:"113060",cc:"113060"},
+  {n:"RETEN. Y PERCEP. IIBB",c:"113070",cc:"113070"},{n:"RETEN. Y PERCEP. I.V.A.",c:"113080",cc:"113080"},
+  {n:"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)",c:"113110",cc:"113110"},{n:"CREDITO FISCAL DTO 814",c:"113120",cc:"113120"},
+  {n:"ANTICIPOS DE GANANCIAS",c:"113130",cc:"113130"},{n:"RETENCIONES SUSS",c:"113150",cc:"113150"},
+  {n:"COMPRAS",c:"114010",cc:"411010"},{n:"BIENES DE CAMBIO",c:"123060",cc:"114010"},{n:"PROVEEDORES",c:"211010",cc:"211010"},
+  {n:"BANCO SANTANDER PRESTAMO 614",c:"212010",cc:"212010"},{n:"BANCO SANTANDER PRESTAMO 406",c:"212011",cc:"212010"},
+  {n:"PRESTAMO SANTANDER 3309",c:"212012",cc:"212010"},{n:"PRESTAMO SANTANDER 694",c:"212014",cc:"212010"},
+  {n:"REMUNERACIONES A PAGAR",c:"213010",cc:"213010"},{n:"CARGAS SOCIALES A PAGAR",c:"213020",cc:"213020"},
+  {n:"SEC A PAGAR",c:"213040",cc:"213040"},{n:"INACAP A PAGAR",c:"213040",cc:"213040"},{n:"FAECYS A PAGAR",c:"213040",cc:"213040"},
+  {n:"I.V.A. A PAGAR",c:"214010",cc:"214010"},{n:"D.G.I. I.V.A. SALDO A FAVOR",c:"214010",cc:"214010"},
+  {n:"D.G.R. INGRESOS BRUTOS A PAGAR",c:"214020",cc:"214020"},{n:"SDO. FAVOR IMP A LOS INGRESOS BRUTOS",c:"XXXXX",cc:"113070"},{n:"IMPUESTO S/BS PERSONALES SOC Y PARTICIP",c:"214090",cc:"214090"},
+  {n:"VENTAS",c:"311010",cc:"311010"},{n:"INTERESES GANADOS",c:"321010",cc:"321010"},{n:"I.V.A. DÉBITO FISCAL",c:"322010",cc:"322010"},
+  {n:"SUELDOS Y JORNALES",c:"422010",cc:"423010"},{n:"CARGAS SOCIALES",c:"422020",cc:"423050"},{n:"COMBUSTIBLES",c:"422050",cc:"423060"},
+  {n:"D.G.R. INGRESOS BRUTOS",c:"422060",cc:"423080"},{n:"REP. MANTENIMIENTO",c:"422070",cc:"423090"},{n:"SEGUROS",c:"422080",cc:"423100"},
+  {n:"GASTOS VARIOS",c:"423020",cc:"423020"},{n:"COMISIONES Y GTOS. BANCARIOS",c:"423040",cc:"425020"},{n:"SERVICIOS VARIOS",c:"423070",cc:"423020"},
+  {n:"FLETES",c:"423110",cc:"423110"},{n:"GASTOS DE LIBRERÍA IMPRENTA Y CORREO",c:"424020",cc:"424120"},{n:"ALQUILERES",c:"424070",cc:"424070"},
+  {n:"HONORARIOS",c:"424100",cc:"424100"},{n:"INTERESES FINANCIEROS",c:"425010",cc:"425010"},{n:"INTERESES RESARCITORIOS",c:"425011",cc:"425020"},
+  {n:"D.G.I. I.V.A. CRÉDITO FISCAL",c:"426010",cc:"426010"},{n:"PLAN DE PAGOS AFIP U244892",c:"XXXXX",cc:"214030"},
+  {n:"PLAN DE PAGOS AFIP T914705",c:"XXXXX",cc:"214030"},{n:"PLAN DE PAGOS AFIP 813397",c:"XXXXX",cc:"214030"},
+  {n:"PRESTAMO SANTANDER 457",c:"XXXXX",cc:"212010"},{n:"PRESTAMOS GALICIA 643",c:"XXXXX",cc:"212030"},
+  {n:"PLAN DE AHORRO RODADOS",c:"XXXXX",cc:"113100"},{n:"INVERSIONES",c:"XXXXX",cc:"112000"},{n:"MONEDA EXTRANJERA",c:"XXXXX",cc:"111030"},
+  {n:"CAPITAL SOCIAL",c:"XXXXX",cc:"221010"},{n:"RESULTADOS NO ASIGNADOS",c:"XXXXX",cc:"223010"},
+  {n:"AJUSTE DE CAPITAL",c:"XXXXX",cc:"221020"},{n:"APORTES IRREVOCABLES",c:"XXXXX",cc:"221030"},
+  {n:"RESERVA LEGAL",c:"XXXXX",cc:"222010"},{n:"INMUEBLES",c:"XXXXX",cc:"123052"},
+  {n:"TERRENOS",c:"XXXXX",cc:"123051"},{n:"RODADOS",c:"XXXXX",cc:"123010"},
+  {n:"PASIVO IMPUESTO DIFERIDO",c:"XXXXX",cc:"214070"},{n:"AMORT. ACUM. BIENES DE USO",c:"XXXXX",cc:"123040"},
+  {n:"SOFTWARE",c:"XXXXX",cc:"123060"},{n:"INSTALACIONES",c:"XXXXX",cc:"123020"},
+  {n:"GALPONES (OBRA EN CURSO)",c:"XXXXX",cc:"123053"},{n:"MUEBLES Y UTILES",c:"XXXXX",cc:"123030"},
+  {n:"RESULTADO DEL EJERCICIO",c:"XXXXX",cc:"223020"},
+];
+// Maestro de cuentas del ejercicio activo (apunta a DB.cuentas)
+let MC=MC_BASE;
+
+
+// PLANTILLAS
+const PL={
+  "POR VENTAS DEL MES S/ LIBRO I.V.A.":[
+    {n:"CAJA",t:"D",autoSplit:0.20},{n:"DEUDORES POR VENTAS",t:"D",autoSplit:0.80},
+    {n:"VENTAS",t:"H"},{n:"I.V.A. DÉBITO FISCAL",t:"H"}],
+  "POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES":[
+    {n:"D.G.R. INGRESOS BRUTOS",t:"D"},
+    {n:"RETEN. Y PERCEP. IIBB",t:"H"},
+    {n:"D.G.R. INGRESOS BRUTOS A PAGAR",t:"H",formula:true,swing:"iibb"},
+    {n:"SDO. FAVOR IMP A LOS INGRESOS BRUTOS",t:"D",formula:true,swing:"iibb"}],
+  "POR EGRESOS BANCARIOS - SANTANDER":[
+    {n:"I.V.A. A PAGAR",t:"D"},{n:"PROVEEDORES",t:"D"},{n:"CARGAS SOCIALES A PAGAR",t:"D"},
+    {n:"REMUNERACIONES A PAGAR",t:"D"},{n:"RETEN. Y PERCEP. I.V.A.",t:"D"},
+    {n:"BANCO SANTANDER PRESTAMO 614",t:"D"},{n:"BANCO SANTANDER PRESTAMO 406",t:"D"},
+    {n:"PRESTAMO SANTANDER 3309",t:"D"},{n:"PRESTAMO SANTANDER 694",t:"D"},
+    {n:"COMISIONES Y GTOS. BANCARIOS",t:"D"},{n:"RETEN. Y PERCEP. IIBB",t:"D"},
+    {n:"SERVICIOS VARIOS",t:"D"},{n:"SEGUROS",t:"D"},{n:"HONORARIOS",t:"D"},
+    {n:"PLAN DE PAGOS AFIP U244892",t:"D"},{n:"PLAN DE PAGOS AFIP T914705",t:"D"},
+    {n:"PLAN DE PAGOS AFIP 813397",t:"D"},{n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"D"},
+    {n:"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)",t:"D"},{n:"INTERESES RESARCITORIOS",t:"D"},
+    {n:"PLAN DE AHORRO RODADOS",t:"D"},{n:"ANTICIPOS DE GANANCIAS",t:"D"},
+    {n:"D.G.R. INGRESOS BRUTOS A PAGAR",t:"D"},{n:"CTA PARTICULAR CARLOS MARTIN",t:"D"},
+    {n:"CTA PARTICULAR MAXIMILIANO MARTIN",t:"D"},{n:"CTA PARTICULAR RODOLFO MARTIN",t:"D"},
+    {n:"BANCO SANTANDERCTA. CTE.",t:"H",formula:true}],
+  "POR EGRESOS BANCARIOS - CREDICOOP":[
+    {n:"PROVEEDORES",t:"D"},{n:"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)",t:"D"},
+    {n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"D"},{n:"COMISIONES Y GTOS. BANCARIOS",t:"D"},
+    {n:"RETEN. Y PERCEP. IIBB",t:"D"},{n:"BANCO CREDICOOP CTA CTE",t:"H",formula:true}],
+  "POR EGRESOS BANCARIOS - GALICIA":[
+    {n:"PROVEEDORES",t:"D"},{n:"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)",t:"D"},
+    {n:"COMISIONES Y GTOS. BANCARIOS",t:"D"},{n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"D"},
+    {n:"RETEN. Y PERCEP. I.V.A.",t:"D"},{n:"RETEN. Y PERCEP. IIBB",t:"D"},
+    {n:"PRESTAMOS GALICIA 643",t:"D"},{n:"BANCO GALICIA CTA. CTE.",t:"H",formula:true}],
+  "POR INGRESOS BANCARIOS - SANTANDER":[
+    {n:"BANCO SANTANDERCTA. CTE.",t:"D",formula:true},
+    {n:"DEUDORES POR VENTAS",t:"H"},{n:"CAJA",t:"H"}],
+  "POR INGRESOS BANCARIOS - CREDICOOP":[
+    {n:"BANCO CREDICOOP CTA CTE",t:"D",formula:true},
+    {n:"DEUDORES POR VENTAS",t:"H"}],
+  "POR INGRESOS BANCARIOS - GALICIA":[
+    {n:"BANCO GALICIA CTA. CTE.",t:"D",formula:true},
+    {n:"DEUDORES POR VENTAS",t:"H"}],
+  "POR ASIENTO I.V.A. DEL MES":[
+    {n:"I.V.A. DÉBITO FISCAL",t:"D"},{n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"H"},
+    {n:"CREDITO FISCAL DTO 814",t:"H"},{n:"I.V.A. A PAGAR",t:"H",formula:true},
+    {n:"RETEN. Y PERCEP. I.V.A.",t:"H"}],
+  "POR PAGOS DEL MES":[
+    {n:"SEC A PAGAR",t:"D"},{n:"INACAP A PAGAR",t:"D"},{n:"FAECYS A PAGAR",t:"D"},
+    {n:"PROVEEDORES",t:"D"},{n:"CAJA",t:"H",formula:true}],
+  "POR DEVENGAMIENTO DE SUELDOS":[
+    {n:"CARGAS SOCIALES",t:"D"},{n:"SUELDOS Y JORNALES",t:"D"},{n:"CREDITO FISCAL DTO 814",t:"D"},
+    {n:"REMUNERACIONES A PAGAR",t:"H"},{n:"CARGAS SOCIALES A PAGAR",t:"H"},
+    {n:"SEC A PAGAR",t:"H"},{n:"INACAP A PAGAR",t:"H"},{n:"FAECYS A PAGAR",t:"H"}],
+  "POR LAS COMPRAS":[
+    {n:"COMPRAS",t:"D"},{n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"D"},{n:"SERVICIOS VARIOS",t:"D"},
+    {n:"GASTOS VARIOS",t:"D"},{n:"COMBUSTIBLES",t:"D"},{n:"FLETES",t:"D"},
+    {n:"GASTOS DE LIBRERÍA IMPRENTA Y CORREO",t:"D"},{n:"REP. MANTENIMIENTO",t:"D"},
+    {n:"HONORARIOS",t:"D"},{n:"ALQUILERES",t:"D"},
+    {n:"CAJA",t:"H"},{n:"PROVEEDORES",t:"H",formula:true}],
+  "POR COBRO DE VENTAS EN CUENTA CORRIENTE":[
+    {n:"CAJA",t:"D"},{n:"RETEN. Y PERCEP. IIBB",t:"D"},{n:"RETEN. Y PERCEP. I.V.A.",t:"D"},
+    {n:"RETENCIONES SUSS",t:"D"},{n:"RETENCIONES GANANCIAS",t:"D"},
+    {n:"DEUDORES POR VENTAS",t:"H",formula:true}],
+  "POR PLAN DE PAGOS AFIP":[
+    {n:"I.V.A. A PAGAR",t:"D"},{n:"INTERESES FINANCIEROS",t:"D"},
+    {n:"PLAN DE PAGOS AFIP U244892",t:"H",formula:true}],
+  "POR COMPENSACION":[
+    {n:"ANTICIPOS DE GANANCIAS",t:"D"},{n:"INTERESES RESARCITORIOS",t:"D"},
+    {n:"I.V.A. A PAGAR",t:"H",formula:true}],
+  "POR INVERSIONES":[
+    {n:"INVERSIONES",t:"D"},{n:"MONEDA EXTRANJERA",t:"D"},
+    {n:"BANCO SANTANDERCTA. CTE.",t:"H",formula:true}],
+  "POR IMPUESTO A LAS GANANCIAS":[
+    {n:"IMPUESTO S/BS PERSONALES SOC Y PARTICIP",t:"D"},{n:"RESULTADO DEL EJERCICIO",t:"D"},
+    {n:"RETENCIONES GANANCIAS",t:"H"},{n:"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)",t:"H"},
+    {n:"ANTICIPOS DE GANANCIAS",t:"H",formula:true}],
+  "POR RECLASIFICACION DE CUENTAS":[
+    {n:"BANCO CREDICOOP CTA CTE",t:"D",formula:true},{n:"INTERESES GANADOS",t:"H"}],
+  "ASIENTO MANUAL":[]
+};
+const TIPOS=Object.keys(PL);
+
+// ─── INSTRUCTIVO DE CARGA ─────────────────────────────────────────────────────
+// Documentación de cómo se carga cada tipo de asiento: de dónde sale cada
+// importe, qué líneas van a mano y cuáles las calcula el sistema.
+const INST_GENERAL=[
+  {tit:"Empresa, ejercicio y mes",txt:"La barra oscura de arriba define sobre qué estás trabajando. Cada ejercicio tiene sus propios asientos y sus propios saldos iniciales; el maestro de cuentas, en cambio, es uno solo y lo comparten todas las empresas."},
+  {tit:"Ejercicios que no son año calendario",txt:"Un ejercicio se define por el mes en que arranca y cuántos meses dura, así que puede ir de julio a junio o durar menos de doce meses. El selector de mes lista los períodos en orden real y las fechas de cierre de cada uno se calculan solas."},
+  {tit:"Guardado",txt:"Se guarda solo en este navegador y en esta computadora, unos segundos después de cada cambio: el reloj verde de arriba a la derecha muestra la última vez. Si borrás los datos del navegador o cambiás de máquina se pierde, así que exportá una copia cada tanto desde la pestaña Empresas."},
+  {tit:"Importar",txt:"Seis importadores: extracto bancario, resumen de compras, DDJJ de IIBB, DDJJ de IVA, F.931 y retenciones sufridas. Todos muestran una previsualización antes de tocar nada, y si ya existe un asiento de ese tipo en el mes te dejan elegir entre reemplazarlo, agregar otro u omitirlo."},
+  {tit:"Líneas violetas",txt:"Una línea violeta con ƒ se calcula por diferencia. Una línea violeta sin ƒ es derivada: sale de un dato de la DDJJ menos otra línea. Es el caso del crédito fiscal de IVA, que es el de la DDJJ menos el DTO 814."},
+  {tit:"Botón D / H",txt:"El botón verde/amarillo de la izquierda de cada línea define el lado. Si hacés click, la línea se pasa al otro lado llevándose el importe cargado."},
+  {tit:"Fórmula (ƒ)",txt:"Una línea con ƒ no se escribe: el sistema la calcula por diferencia para que el asiento cierre. Suele ser el banco, Caja o Proveedores. El botón ƒ de la derecha activa o desactiva la fórmula en cualquier línea."},
+  {tit:"Líneas en blanco",txt:"Las plantillas traen todas las cuentas posibles. Las que no uses dejalas vacías: no salen ni en el Formato Chino ni en los Mayores."},
+  {tit:"Cód. Chino",txt:"Cada línea tiene su código alternativo para la exportación agrupada. Viene del Maestro de Cuentas, pero se puede cambiar en la línea si ese movimiento puntual va a otra cuenta del plan chino."},
+  {tit:"Cuadre",txt:"El badge del encabezado de cada asiento muestra Debe y Haber ya con las fórmulas resueltas. El de arriba de todo suma el mes completo."},
+  {tit:"Copiar mes anterior",txt:"Trae la misma estructura de asientos del mes previo con los importes en blanco, para no volver a armarlos uno por uno."},
+];
+const INSTRUCTIVO=[
+  {t:"POR VENTAS DEL MES S/ LIBRO I.V.A.",
+   o:"Libro I.V.A. Ventas del mes (subdiario de ventas).",
+   p:["<b>Haber — VENTAS:</b> total facturado neto (gravado + no gravado + exento).",
+      "<b>Haber — I.V.A. DÉBITO FISCAL:</b> débito fiscal total del libro.",
+      "<b>CAJA</b> y <b>DEUDORES POR VENTAS</b> se reparten solas: 20% contado y 80% cuenta corriente sobre el total del Haber.",
+      "Si el reparto real fue otro, escribí el importe en una de las dos y la otra se recalcula sola para que siga cerrando. Esa línea queda marcada como <i>Manual</i>; el botón ↺ vuelve al 20/80."],
+   x:"El I.V.A. Débito Fiscal de este asiento tiene que ser el mismo que cargues en «Asiento I.V.A. del mes». Arriba en Asientos aparece un cartel que compara los dos y avisa la diferencia."},
+  {t:"POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES",
+   o:"DDJJ mensual de Ingresos Brutos — DGR San Juan.",
+   p:["<b>Debe — D.G.R. INGRESOS BRUTOS:</b> Total Impuesto Determinado del período.",
+      "<b>Haber — RETEN. Y PERCEP. IIBB:</b> total de retenciones y percepciones sufridas en el mes.",
+      "Si viene saldo a favor del mes anterior, agregalo como línea en el <b>Haber</b> con la cuenta <b>SDO. FAVOR IMP A LOS INGRESOS BRUTOS</b>. El sistema calcula el arrastre y lo muestra en un cartel arriba del asiento.",
+      "Las dos últimas líneas son un <b>par de vuelco</b> y las calcula el sistema: si el determinado supera a lo retenido se llena <b>D.G.R. INGRESOS BRUTOS A PAGAR</b> (Haber); si lo retenido es mayor se llena <b>SDO. FAVOR IMP A LOS INGRESOS BRUTOS</b> (Debe).",
+      "El PDF de la DDJJ se importa desde <b>Importar → IIBB</b>: además de cargar los dos importes, cruza el saldo a favor del mes anterior contra el que viene arrastrando el sistema."],
+   x:"Nunca se llenan las dos líneas del vuelco a la vez. Si aparecen las dos con importe, revisá que no haya quedado un importe cargado a mano en alguna."},
+  {t:"POR EGRESOS BANCARIOS — SANTANDER / GALICIA / CREDICOOP",
+   o:"Extracto bancario del mes, columna de débitos.",
+   p:["Cargá el <b>neto del mes por cuenta de destino</b>, no movimiento por movimiento: proveedores, préstamos, impuestos, comisiones, seguros, honorarios, planes de pago, etc. Todo va al <b>Debe</b>.",
+      "La <b>cuenta del banco</b> es la línea ƒ del Haber: sale sola y equivale al total de egresos del mes.",
+      "El impuesto al débito y crédito bancario va en <b>IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)</b>, y el IVA de comisiones en <b>D.G.I. I.V.A. CRÉDITO FISCAL</b>.",
+      "Se puede generar automáticamente desde la pestaña <b>Importar</b> con el Excel de movimientos: agrupa por mes y cuenta, netea débitos contra créditos y arma el asiento."],
+   x:"Cada banco tiene su propia plantilla porque las cuentas que se mueven son distintas. Elegí la del banco correcto: la línea ƒ ya viene apuntada a esa cuenta."},
+  {t:"POR INGRESOS BANCARIOS — SANTANDER / GALICIA / CREDICOOP",
+   o:"Extracto bancario del mes, columna de créditos.",
+   p:["<b>Haber — DEUDORES POR VENTAS:</b> cobranzas de clientes acreditadas o transferidas.",
+      "<b>Haber — CAJA:</b> cuando el ingreso es un depósito de fondos que ya estaban en caja.",
+      "La <b>cuenta del banco</b> en el Debe es ƒ: la calcula el sistema."],
+   x:"Si el mismo mes tiene ingresos y egresos del mismo banco, van en dos asientos separados. El importador ya los separa así."},
+  {t:"POR ASIENTO I.V.A. DEL MES",
+   o:"DDJJ de I.V.A. del período (F.2002).",
+   p:["<b>Debe — I.V.A. DÉBITO FISCAL:</b> débito fiscal del período (el mismo del asiento de Ventas).",
+      "<b>Haber — D.G.I. I.V.A. CRÉDITO FISCAL:</b> crédito fiscal del Libro I.V.A. Compras.",
+      "<b>Haber — CREDITO FISCAL DTO 814:</b> cómputo del decreto 814 sobre contribuciones patronales.",
+      "<b>Haber — RETEN. Y PERCEP. I.V.A.:</b> retenciones y percepciones de IVA sufridas en el mes.",
+      "<b>I.V.A. A PAGAR</b> es la línea ƒ: sale por diferencia.",
+      "Se puede importar el PDF de la DDJJ desde <b>Importar → IVA</b>. Como el crédito fiscal de la DDJJ viene con el DTO 814 adentro, el importador lo descuenta y deja las dos líneas vinculadas: si después cambiás el 814 en el asiento de sueldos, el crédito fiscal se ajusta solo."],
+   x:"Si el período cierra con saldo técnico a favor, cambiá esa última línea a <b>D.G.I. I.V.A. SALDO A FAVOR</b> y pasala al Debe con el botón D/H, dejándola igual como ƒ."},
+  {t:"POR PAGOS DEL MES",
+   o:"Pagos efectuados por caja durante el mes.",
+   p:["<b>Debe — SEC / INACAP / FAECYS:</b> aportes y contribuciones sindicales pagados.",
+      "<b>Debe — PROVEEDORES:</b> pagos a proveedores hechos en efectivo.",
+      "<b>Haber — CAJA:</b> es ƒ, total desembolsado."],
+   x:"Lo que se pagó por banco no va acá: va en el asiento de egresos bancarios del banco que corresponda."},
+  {t:"POR DEVENGAMIENTO DE SUELDOS",
+   o:"Libro de sueldos / resumen de la liquidación del mes y F.931.",
+   p:["<b>Debe — SUELDOS Y JORNALES:</b> total bruto liquidado (remunerativo + no remunerativo).",
+      "<b>Debe — CARGAS SOCIALES:</b> contribuciones patronales del F.931.",
+      "<b>Debe — CREDITO FISCAL DTO 814:</b> el 3,80% de la Remuneración 1 del F.931. Es parte de las contribuciones, así que se descuenta de la línea de Cargas Sociales.",
+      "<b>Haber — REMUNERACIONES A PAGAR:</b> neto a pagar al personal.",
+      "<b>Haber — CARGAS SOCIALES A PAGAR:</b> contribuciones patronales + aportes retenidos al personal.",
+      "<b>Haber — SEC / INACAP / FAECYS:</b> retenciones sindicales del recibo."],
+   x:"Este asiento no tiene línea ƒ: tiene que cuadrar solo. Si el badge del encabezado marca diferencia, casi siempre falta el crédito fiscal del 814 o algún concepto de retención. Las cargas sociales y el 814 se traen del PDF desde <b>Importar → F.931</b>."},
+  {t:"POR LAS COMPRAS",
+   o:"Libro I.V.A. Compras del mes.",
+   p:["<b>Debe — COMPRAS:</b> neto de la mercadería de reventa.",
+      "<b>Debe — cuentas de gasto:</b> servicios varios, gastos varios, combustibles, fletes, librería, reparación y mantenimiento, honorarios y alquileres, según la imputación de cada comprobante.",
+      "<b>Debe — D.G.I. I.V.A. CRÉDITO FISCAL:</b> total de crédito fiscal del libro.",
+      "<b>Haber — CAJA:</b> la parte pagada al contado.",
+      "<b>Haber — PROVEEDORES:</b> es ƒ, queda lo que va a cuenta corriente.",
+      "Se importa desde <b>Importar → Compras</b> con el resumen del libro. La columna CUENTA del Excel se traduce con una tabla de equivalencias que se guarda y se edita una sola vez."],
+   x:"El neto no gravado y el exento también se imputan a la cuenta de gasto o compra: solo el gravado genera crédito fiscal."},
+  {t:"POR COBRO DE VENTAS EN CUENTA CORRIENTE",
+   o:"Recibos de cobranza del mes y certificados de retención sufridos.",
+   p:["<b>Debe — RETEN. Y PERCEP. IIBB / RETEN. Y PERCEP. I.V.A. / RETENCIONES SUSS / RETENCIONES GANANCIAS:</b> retenciones que los clientes practicaron al pagar.",
+      "<b>Debe — CAJA:</b> lo efectivamente cobrado.",
+      "<b>Haber — DEUDORES POR VENTAS:</b> es ƒ, total de la cobranza imputada a la cuenta corriente.",
+      "Las retenciones sufridas se importan desde <b>Importar → Retenciones</b> con el Excel de ARCA: totaliza por mes y carga la línea que corresponda."],
+   x:"Las retenciones sufridas se cargan siempre en el mes del certificado, aunque el cobro se acredite después."},
+  {t:"POR PLAN DE PAGOS AFIP",
+   o:"Acuse de presentación del plan de facilidades.",
+   p:["<b>Debe — I.V.A. A PAGAR</b> (o el impuesto que se regulariza): capital incluido en el plan.",
+      "<b>Debe — INTERESES FINANCIEROS:</b> intereses de financiación del plan.",
+      "<b>Haber — PLAN DE PAGOS AFIP:</b> es ƒ, deuda total consolidada."],
+   x:"Las cuotas mensuales del plan no van acá: se cargan como débito del banco en el asiento de egresos bancarios, contra la cuenta del plan."},
+  {t:"POR COMPENSACION",
+   o:"Solicitud de compensación de saldos AFIP (F.798).",
+   p:["<b>Debe — ANTICIPOS DE GANANCIAS</b> u otro saldo a favor que se aplica.",
+      "<b>Debe — INTERESES RESARCITORIOS</b> si la obligación cancelada devengó intereses.",
+      "<b>Haber — I.V.A. A PAGAR:</b> es ƒ, obligación cancelada por compensación."],
+   x:"Cambiá las cuentas si la compensación es entre otros impuestos: la estructura (saldo a favor al Debe, obligación al Haber) es siempre la misma."},
+  {t:"POR INVERSIONES",
+   o:"Comprobantes de compra de moneda extranjera o colocaciones.",
+   p:["<b>Debe — INVERSIONES / MONEDA EXTRANJERA:</b> importe adquirido.",
+      "<b>Haber — banco:</b> es ƒ, débito de la cuenta de donde salieron los fondos."],
+   x:"Si la compra salió de otro banco, cambiá la cuenta de la línea ƒ con el buscador."},
+  {t:"POR IMPUESTO A LAS GANANCIAS",
+   o:"Determinación anual del impuesto y pagos a cuenta computables.",
+   p:["<b>Debe — RESULTADO DEL EJERCICIO:</b> cargo del impuesto determinado.",
+      "<b>Debe — IMPUESTO S/BS PERSONALES SOC Y PARTICIP:</b> bienes personales acciones y participaciones.",
+      "<b>Haber — RETENCIONES GANANCIAS</b> e <b>IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A):</b> pagos a cuenta que se aplican contra el impuesto.",
+      "<b>Haber — ANTICIPOS DE GANANCIAS:</b> es ƒ."],
+   x:"Es un asiento de cierre: se carga una sola vez en el mes en que se determina el impuesto."},
+  {t:"POR RECLASIFICACION DE CUENTAS",
+   o:"Ajustes de imputación y acreditaciones que no pasan por otro asiento.",
+   p:["Sirve para pasar un saldo de una cuenta a otra o registrar resultados como los intereses ganados acreditados por el banco.",
+      "Cambiá las cuentas con el buscador de cada línea y agregá las que necesites con «+ Agregar línea».",
+      "La línea ƒ cierra el asiento por diferencia."],
+   x:"Conviene usar un asiento por concepto reclasificado, así en el Mayor se entiende de dónde salió cada ajuste."},
+  {t:"ASIENTO MANUAL",
+   o:"Cualquier movimiento que no encaje en las plantillas.",
+   p:["Arranca con una sola línea vacía. Agregá las que necesites con «+ Agregar línea».",
+      "Elegí la cuenta escribiendo en el campo: el buscador filtra el Plan de Cuentas y completa el código y el Cód. Chino.",
+      "Definí el lado con el botón D/H y, si querés que una línea cierre por diferencia, activá la ƒ."],
+   x:"Si el mismo asiento manual se repite todos los meses, conviene pedir una plantilla nueva en vez de rearmarlo cada vez."},
+];
+
+// ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
+let E={vista:"carga",mes:0,emp:"",ej:"",drop:false,ecta:null,bq:"",acOpen:null,siEdit:null,siSearch:"",
+  instQ:"",instOpen:{},
+  imp:{sub:"banco",bank:"SANTANDER",reten:"GANANCIAS",archivo:"",prop:null,avisos:[],acc:{},raw:null,err:""}};
+let uid_=0;
+const nid=()=>"x"+(++uid_);
+const uid=p=>p+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
+
+// ─── MODELO DE DATOS ──────────────────────────────────────────────────────────
+// DB = { empresas[], ejercicios[], cuentas[], saldos{ejId:{}}, asientos{ejId:{per:[]}} }
+// Un ejercicio se define por su mes de inicio y su cantidad de meses, así que no
+// necesita ser año calendario: "2025/26" puede arrancar en julio y cerrar en junio.
+let DB=null;
+function dbVacia(){
+  return {v:6,
+    empresas:[{id:"e1",nombre:"CAR MAR S.A.",cuit:""}],
+    ejercicios:[{id:"j1",emp:"e1",nom:"2026",ini:"2026-01",meses:12}],
+    cuentas:MC_BASE.map(x=>({...x})),
+    mapCompras:{...MAP_COMPRAS_BASE},
+    saldos:{j1:JSON.parse(JSON.stringify(SALDOS_CMSA))},
+    asientos:{j1:{}}};
+}
+
+// ─── FIREBASE ────────────────────────────────────────────────────────────────
+const FB_CONFIG={
+  apiKey:"AIzaSyDqsJPFZWiESjoAT_qRjsPX8O3Jk4_vnHs",
+  authDomain:"cmsa-contable.firebaseapp.com",
+  projectId:"cmsa-contable",
+  storageBucket:"cmsa-contable.firebasestorage.app",
+  messagingSenderId:"274202557766",
+  appId:"1:274202557766:web:22803d8af6707b19a8b947"
+};
+// Si no cargó el SDK (sin internet, o abriendo el archivo suelto), la app sigue
+// funcionando contra el navegador, como antes.
+const MODO_LOCAL=(typeof firebase==="undefined");
+const LS_KEY="sistema_contable_v6";
+let fb={db:null,auth:null,user:null};
+let unsubCfg=null,unsubEj=null;
+let _sync={cfg:"",saldos:"",meses:{}};
+const CLIENT_ID=(()=>{
+  try{
+    let c=localStorage.getItem("cmsa_client");
+    if(!c){c="c"+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);localStorage.setItem("cmsa_client",c);}
+    return c;
+  }catch(e){return "c"+Math.random();}
+})();
+
+// Estructura en Firestore:
+//   config/general                  -> empresas, ejercicios, plan de cuentas, equivalencias
+//   ejercicios/{ejId}               -> saldos iniciales
+//   ejercicios/{ejId}/meses/{per}   -> asientos de ese mes
+// Un documento por mes: dos personas cargando meses distintos nunca se pisan.
+const DOC_CFG=()=>fb.db.collection("config").doc("general");
+const DOC_EJ=id=>fb.db.collection("ejercicios").doc(id);
+const COL_MESES=id=>DOC_EJ(id).collection("meses");
+const cfgPlano=()=>({v:DB.v,empresas:DB.empresas,ejercicios:DB.ejercicios,cuentas:DB.cuentas,mapCompras:DB.mapCompras});
+
+function estado(tipo,txt){
+  const el=document.getElementById("saveInd");if(!el)return;
+  const p=n=>String(n).padStart(2,"0");
+  if(tipo==="ok"){const f=new Date();el.className="save-ind ok";el.title="Guardado en la nube";el.textContent="\u2713 "+p(f.getHours())+":"+p(f.getMinutes());}
+  else if(tipo==="guardando"){el.className="save-ind";el.title="";el.textContent="Guardando\u2026";}
+  else if(tipo==="err"){el.className="save-ind err";el.title=txt||"";el.textContent="\u26A0 Sin guardar";}
+  else{el.className="save-ind";el.title="";el.textContent=txt||"";}
+}
+function avisarOtro(){
+  const el=document.getElementById("saveInd");if(!el)return;
+  el.className="save-ind otro";el.textContent="\u21BB Actualizado por el otro usuario";
+  setTimeout(()=>estado("ok"),4000);
+}
+
+// ─── LOGIN ───────────────────────────────────────────────────────────────────
+function loginVer(v){
+  const el=document.getElementById("login");if(el)el.style.display=v?"flex":"none";
+  const b=document.getElementById("btnSalir");if(b)b.style.display=v?"none":"";
+  const t=document.getElementById("app");if(t&&v)t.innerHTML="";
+}
+function loginMsg(t,err){const el=document.getElementById("lg-msg");if(el){el.textContent=t;el.className=err?"lg-msg err":"lg-msg";}}
+function loginEntrar(){
+  const e=(document.getElementById("lg-mail")||{}).value,p=(document.getElementById("lg-pass")||{}).value;
+  if(!e||!p){loginMsg("Completá correo y contraseña.",true);return;}
+  loginMsg("Entrando\u2026");
+  fb.auth.signInWithEmailAndPassword(String(e).trim(),p).catch(err=>loginMsg(fbErr(err),true));
+}
+function loginTecla(ev){if(ev.key==="Enter")loginEntrar();}
+function fbErr(err){
+  const m={"auth/invalid-email":"El correo no es válido.",
+    "auth/user-not-found":"No existe ese usuario.",
+    "auth/wrong-password":"Contraseña incorrecta.",
+    "auth/invalid-credential":"Correo o contraseña incorrectos.",
+    "auth/too-many-requests":"Demasiados intentos fallidos. Esperá unos minutos.",
+    "auth/network-request-failed":"Sin conexión a internet.",
+    "permission-denied":"El usuario no tiene permiso. Revisá las reglas de Firestore.",
+    "unavailable":"Sin conexión con la base de datos."};
+  return m[err&&err.code]||("Error: "+((err&&err.message)||err));
+}
+function salir(){
+  if(!confirm("¿Cerrar sesión?"))return;
+  if(unsubCfg){unsubCfg();unsubCfg=null;}
+  if(unsubEj){unsubEj();unsubEj=null;}
+  fb.auth.signOut();
+}
+
+function fbInit(){
+  firebase.initializeApp(FB_CONFIG);
+  fb.db=firebase.firestore();
+  fb.auth=firebase.auth();
+  fb.db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  fb.auth.onAuthStateChanged(u=>{
+    fb.user=u;
+    if(u){loginVer(false);arrancarNube();}
+    else{loginVer(true);loginMsg("");}
+  });
+}
+
+// ─── CARGA ───────────────────────────────────────────────────────────────────
+async function arrancarNube(){
+  estado("info","Cargando\u2026");
+  try{
+    const snap=await DOC_CFG().get();
+    if(snap.exists){
+      const d=JSON.parse(snap.data().datos||"{}");
+      DB=Object.assign(dbVacia(),d);
+      DB.saldos={};DB.asientos={};
+    }else{
+      // Primera vez: si hay algo guardado en este navegador, se sube.
+      const local=leerLocal();
+      DB=local||dbVacia();
+      await subirTodo();
+      if(local)alert("Se subieron a la nube los datos que tenías en este navegador.");
+    }
+    if(!DB.cuentas||!DB.cuentas.length)DB.cuentas=MC_BASE.map(x=>({...x}));
+    if(!DB.mapCompras)DB.mapCompras={...MAP_COMPRAS_BASE};
+    MC=DB.cuentas;
+    _sync.cfg=JSON.stringify(cfgPlano());
+    escucharCfg();
+    await abrirEjercicio(DB.ejercicios.length?DB.ejercicios[0].id:null);
+  }catch(e){
+    estado("err",e.message);
+    alert("No pude cargar los datos: "+fbErr(e));
+  }
+}
+function leerLocal(){
+  try{
+    const s=localStorage.getItem(LS_KEY);
+    if(s){const d=JSON.parse(s);if(d&&d.empresas&&d.ejercicios&&d.cuentas)return d;}
+  }catch(e){}
+  return null;
+}
+async function abrirEjercicio(id){
+  if(unsubEj){unsubEj();unsubEj=null;}
+  _sync.saldos="";_sync.meses={};
+  if(!id){activarEjercicio(null);render();estado("ok");return;}
+  estado("info","Abriendo ejercicio\u2026");
+  const [ejSnap,mesSnap]=await Promise.all([DOC_EJ(id).get(),COL_MESES(id).get()]);
+  DB.saldos[id]=(ejSnap.exists&&ejSnap.data().saldos)?JSON.parse(ejSnap.data().saldos):{};
+  const as={};
+  mesSnap.forEach(d=>{as[parseInt(d.id,10)]=JSON.parse(d.data().datos||"[]");});
+  DB.asientos[id]=as;
+  _sync.saldos=JSON.stringify(DB.saldos[id]);
+  Object.keys(as).forEach(k=>{_sync.meses[k]=JSON.stringify(as[k]);});
+  activarEjercicio(id);
+  escucharEj(id);
+  estado("ok");
+  render();
+}
+function escucharCfg(){
+  if(unsubCfg)unsubCfg();
+  unsubCfg=DOC_CFG().onSnapshot(snap=>{
+    if(!snap.exists)return;
+    const d=snap.data();
+    if(d._by===CLIENT_ID)return;
+    const j=d.datos||"";
+    if(j===_sync.cfg)return;
+    const c=JSON.parse(j);
+    DB.empresas=c.empresas;DB.ejercicios=c.ejercicios;DB.cuentas=c.cuentas;DB.mapCompras=c.mapCompras;
+    MC=DB.cuentas;_sync.cfg=j;
+    avisarOtro();render();
+  },err=>estado("err",err.message));
+}
+function escucharEj(id){
+  unsubEj=COL_MESES(id).onSnapshot(snap=>{
+    let n=0;
+    snap.docChanges().forEach(ch=>{
+      const per=parseInt(ch.doc.id,10);
+      if(ch.type==="removed"){
+        if(DB.asientos[id])delete DB.asientos[id][per];
+        delete _sync.meses[per];n++;return;
+      }
+      const d=ch.doc.data();
+      if(d._by===CLIENT_ID)return;
+      const j=d.datos||"[]";
+      if(_sync.meses[per]===j)return;
+      DB.asientos[id][per]=JSON.parse(j);
+      _sync.meses[per]=j;n++;
+    });
+    if(n){avisarOtro();render();}
+  },err=>estado("err",err.message));
+}
+
+// ─── GUARDADO ────────────────────────────────────────────────────────────────
+let _saveT=null;
+function guardarDatos(){
+  clearTimeout(_saveT);
+  _saveT=setTimeout(()=>{MODO_LOCAL?guardarLocal():guardarNube();},600);
+}
+function guardarLocal(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(DB));estado("ok");}
+  catch(e){estado("err",e.message);}
+}
+async function guardarNube(){
+  if(!fb.user||!DB)return;
+  const t=[],now=Date.now();
+  const jc=JSON.stringify(cfgPlano());
+  if(jc!==_sync.cfg)t.push(DOC_CFG().set({datos:jc,_by:CLIENT_ID,_at:now}).then(()=>{_sync.cfg=jc;}));
+  const id=E.ej;
+  if(id){
+    const js=JSON.stringify(DB.saldos[id]||{});
+    if(js!==_sync.saldos)t.push(DOC_EJ(id).set({saldos:js,_by:CLIENT_ID,_at:now},{merge:true}).then(()=>{_sync.saldos=js;}));
+    const as=DB.asientos[id]||{};
+    Object.keys(as).forEach(per=>{
+      const j=JSON.stringify(as[per]||[]);
+      if(j===_sync.meses[per])return;
+      if(j.length>900000){alert("El mes "+perLabel(parseInt(per,10))+" quedó demasiado grande para guardarse. Avisá para partirlo.");return;}
+      t.push(COL_MESES(id).doc(String(per)).set({datos:j,_by:CLIENT_ID,_at:now}).then(()=>{_sync.meses[per]=j;}));
+    });
+  }
+  if(!t.length)return;
+  estado("guardando");
+  try{await Promise.all(t);estado("ok");}
+  catch(e){estado("err",fbErr(e));}
+}
+// Sube todo lo que haya en memoria (migración inicial y restaurar copia)
+async function subirTodo(){
+  const now=Date.now();
+  await DOC_CFG().set({datos:JSON.stringify(cfgPlano()),_by:CLIENT_ID,_at:now});
+  for(const ej of DB.ejercicios){
+    await DOC_EJ(ej.id).set({saldos:JSON.stringify(DB.saldos[ej.id]||{}),_by:CLIENT_ID,_at:now});
+    const as=DB.asientos[ej.id]||{};
+    for(const per of Object.keys(as)){
+      await COL_MESES(ej.id).doc(String(per)).set({datos:JSON.stringify(as[per]||[]),_by:CLIENT_ID,_at:now});
+    }
+  }
+  _sync.cfg=JSON.stringify(cfgPlano());
+}
+async function borrarEjercicioNube(id){
+  if(MODO_LOCAL)return;
+  const ms=await COL_MESES(id).get();
+  for(const d of ms.docs)await d.ref.delete();
+  await DOC_EJ(id).delete();
+}
+// Trae un ejercicio que no está abierto (para arrastrar saldos o exportar)
+async function traerEjercicio(id){
+  if(DB.asientos[id]&&DB.saldos[id])return;
+  if(MODO_LOCAL){DB.saldos[id]=DB.saldos[id]||{};DB.asientos[id]=DB.asientos[id]||{};return;}
+  const [e,m]=await Promise.all([DOC_EJ(id).get(),COL_MESES(id).get()]);
+  DB.saldos[id]=(e.exists&&e.data().saldos)?JSON.parse(e.data().saldos):{};
+  const as={};m.forEach(d=>{as[parseInt(d.id,10)]=JSON.parse(d.data().datos||"[]");});
+  DB.asientos[id]=as;
+}
+
+// ─── EJERCICIOS Y PERÍODOS ───────────────────────────────────────────────────
+function getEj(id){return DB.ejercicios.find(x=>x.id===(id||E.ej))||null;}
+function getEmp(id){return DB.empresas.find(x=>x.id===id)||null;}
+function nPer(){const e=getEj();return e?(e.meses||12):12;}
+function perYM(i){
+  const e=getEj();if(!e)return{y:new Date().getFullYear(),m:0};
+  const p=String(e.ini).split("-");
+  const t=(parseInt(p[1],10)-1)+i;
+  return{y:parseInt(p[0],10)+Math.floor(t/12),m:((t%12)+12)%12};
+}
+function perLabel(i){const v=perYM(i);return MESES[v.m]+" "+v.y;}
+function perCorto(i){const v=perYM(i);return MESES[v.m].slice(0,3).toLowerCase()+v.y;}
+function fechaFinPer(i){const v=perYM(i);return new Date(Date.UTC(v.y,v.m+1,0)).toISOString().slice(0,10);}
+function perDeFecha(y,m){
+  const e=getEj();if(!e)return -1;
+  const p=String(e.ini).split("-");
+  const t=(y*12+m)-(parseInt(p[0],10)*12+(parseInt(p[1],10)-1));
+  return(t>=0&&t<nPer())?t:-1;
+}
+function ejRango(e){
+  const p=String(e.ini).split("-");const y0=parseInt(p[0],10),m0=parseInt(p[1],10)-1;
+  const t=m0+((e.meses||12)-1);
+  const y1=y0+Math.floor(t/12),m1=((t%12)+12)%12;
+  return MESES[m0].slice(0,3)+" "+y0+" \u2013 "+MESES[m1].slice(0,3)+" "+y1;
+}
+function ejLabel(){const e=getEj();return e?e.nom:"\u2014";}
+function empLabel(){const e=getEj();const m=e?getEmp(e.emp):null;return m?m.nombre:"\u2014";}
+function slug(x){return String(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"")||"empresa";}
+
+function activarEjercicio(id){
+  const ej=getEj(id);
+  E.imp={sub:E.imp?E.imp.sub:"banco",bank:E.imp?E.imp.bank:"SANTANDER",reten:E.imp?E.imp.reten:"GANANCIAS",archivo:"",prop:null,avisos:[],acc:{},raw:null,err:""};
+  E.ej=ej?ej.id:"";
+  E.emp=ej?ej.emp:(DB.empresas[0]?DB.empresas[0].id:"");
+  E.mes=0;
+  if(ej){
+    if(!DB.saldos[ej.id])DB.saldos[ej.id]={};
+    if(!DB.asientos[ej.id])DB.asientos[ej.id]={};
+    SALDOS_INIT=DB.saldos[ej.id];
+  }else SALDOS_INIT={};
+}
+function selEmp(id){
+  E.emp=id;
+  const ejs=DB.ejercicios.filter(x=>x.emp===id);
+  if(MODO_LOCAL){activarEjercicio(ejs.length?ejs[0].id:null);E.emp=id;render();return;}
+  abrirEjercicio(ejs.length?ejs[0].id:null).then(()=>{E.emp=id;render();});
+}
+function selEj(id){
+  if(MODO_LOCAL){activarEjercicio(id);render();return;}
+  abrirEjercicio(id);
+}
+
+// E.apm sigue siendo {periodo:[asientos]} pero ahora vive dentro de DB,
+// colgado del ejercicio activo. Así el resto del código no cambia.
+Object.defineProperty(E,"apm",{
+  configurable:true,
+  get(){if(!DB.asientos[E.ej])DB.asientos[E.ej]={};return DB.asientos[E.ej];},
+  set(v){DB.asientos[E.ej]=v;}
+});
+
+
+// ─── UTILIDADES ───────────────────────────────────────────────────────────────
+function cod(n){const f=MC.find(m=>m.n===n);return f?f.c:"";}
+function ccod(n){const f=MC.find(m=>m.n===n);return f?(f.cc||"XXXXX"):"XXXXX";}
+function chinoDesc(cc){const f=PLAN_CHINO.find(p=>p.c===cc);return f?f.d:cc;}
+// Número -> texto en el formato que entiende pn(): coma decimal, sin miles.
+// Guardar "14272266.56" haría que pn() lea el punto como separador de miles y
+// multiplique por cien, así que todo importe calculado pasa por acá.
+function numStr(v){
+  if(v==null||v==="")return "";
+  const n=Math.round(Number(v)*100)/100;
+  if(!n)return "";
+  return String(n).replace(".",",");
+}
+function pn(s){if(!s&&s!==0)return 0;const v=parseFloat(String(s).replace(/\./g,"").replace(",","."));return isNaN(v)?0:v;}
+function fmtN(n){if(n==null||n==="")return"";return new Intl.NumberFormat("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.abs(n));}
+function fmtD(n){return new Intl.NumberFormat("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+// Fecha para exportación: de "2026-01-31" a "31/1/2026" (formato Excel argentino)
+function fechaExp(iso){const[y,m,d]=iso.split("-");return parseInt(d)+"/"+parseInt(m)+"/"+y;}
+// Importe para exportación: coma decimal, sin separador de miles (ej: -446905714,56)
+function impExp(n){return n.toFixed(2).replace(".",",");}
+
+// ─── ACCESO A DATOS ───────────────────────────────────────────────────────────
+function getMes(){return E.apm[E.mes]||[];}
+function setMes(l){E.apm={...E.apm,[E.mes]:l};}
+
+function tA(a){
+  const d=a.lineas.filter(l=>!l.formula).reduce((s,l)=>s+pn(l.debe),0);
+  const h=a.lineas.filter(l=>!l.formula).reduce((s,l)=>s+pn(l.haber),0);
+  return{d,h,ok:Math.abs(d-h)<0.02};
+}
+function tG(){
+  const list=getMes();
+  const d=list.reduce((s,a)=>s+a.lineas.reduce((ss,l)=>ss+pn(l.debe)+(l.formula&&l._t==="D"?calcFormula(a,l):0),0),0);
+  const h=list.reduce((s,a)=>s+a.lineas.reduce((ss,l)=>ss+pn(l.haber)+(l.formula&&l._t==="H"?calcFormula(a,l):0),0),0);
+  return{d,h,ok:Math.abs(d-h)<0.02};
+}
+
+// Compara el I.V.A. Débito Fiscal cargado en "Ventas del mes" (Haber) contra el
+// cargado en "Asiento I.V.A. del mes" (Debe). Ambos son manuales; deben coincidir.
+function getIvaCheck(mes){
+  const list=E.apm[mes]||[];
+  let vVentas=0,vAsiento=0;
+  list.forEach(a=>{
+    a.lineas.forEach(l=>{
+      if(l.cuenta!=="I.V.A. DÉBITO FISCAL")return;
+      if(a.tipo==="POR VENTAS DEL MES S/ LIBRO I.V.A."&&l._t==="H"){
+        vVentas+=l.formula?calcFormula(a,l):pn(l.haber);
+      }
+      if(a.tipo==="POR ASIENTO I.V.A. DEL MES"&&l._t==="D"){
+        vAsiento+=l.formula?calcFormula(a,l):pn(l.debe);
+      }
+    });
+  });
+  return{vVentas,vAsiento,diff:vVentas-vAsiento,ok:Math.abs(vVentas-vAsiento)<0.02,hay:vVentas>0||vAsiento>0};
+}
+
+// Saldo neto (Debe-Haber) de una cuenta acumulado hasta el cierre de un mes dado
+// (sin incluir ese mes) + saldo inicial. Sirve para saber cuánto arrastrar
+// (ej: SDO. FAVOR IMP A LOS INGRESOS BRUTOS) al asiento del mes siguiente.
+function saldoCuentaHastaMes(cuenta,mesLimite){
+  let d=0,h=0;
+  const si=SALDOS_INIT[cuenta];
+  if(si){d+=si.d||0;h+=si.h||0;}
+  for(let m=0;m<mesLimite;m++){
+    (E.apm[m]||[]).forEach(a=>{
+      a.lineas.forEach(l=>{
+        if(l.cuenta!==cuenta)return;
+        let dv=pn(l.debe),hv=pn(l.haber);
+        if(l.formula){const v=calcFormula(a,l);if(l._t==="D")dv=v;else hv=v;}
+        d+=dv;h+=hv;
+      });
+    });
+  }
+  return d-h;
+}
+
+function calcFormula(asiento, lineaFormula){
+  const otrasD=asiento.lineas.filter(l=>l.id!==lineaFormula.id&&!l.formula).reduce((s,l)=>s+pn(l.debe),0);
+  const otrasH=asiento.lineas.filter(l=>l.id!==lineaFormula.id&&!l.formula).reduce((s,l)=>s+pn(l.haber),0);
+  if(lineaFormula._t==="D") return Math.max(0, otrasH - otrasD);
+  else return Math.max(0, otrasD - otrasH);
+}
+
+function crA(t){
+  const p=PL[t]||[];
+  const ls=p.length?p.map(x=>({
+    id:nid(),cuenta:x.n,codigo:cod(x.n),ccodigo:ccod(x.n),debe:"",haber:"",
+    _t:x.t,formula:x.formula||false,autoSplit:x.autoSplit!=null?x.autoSplit:null,swing:x.swing||null
+  })):[{id:nid(),cuenta:"",codigo:"",ccodigo:"XXXXX",debe:"",haber:"",_t:"",formula:false,autoSplit:null,swing:null}];
+  return{id:nid(),tipo:t,lineas:ls,col:false,manualAuto:null};
+}
+
+// ─── ACCIONES ─────────────────────────────────────────────────────────────────
+function sv(v){E.vista=v;E.drop=false;document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v===v));render();}
+function togInst(k){E.instOpen[k]=!E.instOpen[k];render();}
+function instTodos(v){E.instOpen={gen:v};INSTRUCTIVO.forEach((x,i)=>E.instOpen["i"+i]=v);render();}
+function cm(v){E.mes=parseInt(v);render();}
+function addA(t){setMes([...getMes(),crA(t)]);E.drop=false;render();}
+function delA(id){setMes(getMes().filter(a=>a.id!==id));render();}
+function togC(id){setMes(getMes().map(a=>a.id===id?{...a,col:!a.col}:a));render();}
+function chgT(id,t){setMes(getMes().map(a=>{if(a.id!==id)return a;return{...crA(t),id,col:a.col};}));render();}
+function addL(aid){setMes(getMes().map(a=>a.id===aid?{...a,lineas:[...a.lineas,{id:nid(),cuenta:"",codigo:"",ccodigo:"XXXXX",debe:"",haber:"",_t:"",formula:false}]}:a));render();}
+function delL(aid,lid){setMes(getMes().map(a=>a.id===aid?{...a,lineas:a.lineas.filter(l=>l.id!==lid)}:a));render();}
+
+function updLSilent(aid,lid,f,v){
+  const list=getMes();
+  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;l[f]=v;if(f==="cuenta"){l.codigo=cod(v);l.ccodigo=ccod(v);}if(f==="debe"&&v){l.haber="";}if(f==="haber"&&v){l.debe="";}return;}}
+}
+function updLRender(aid,lid,f,v){
+  updLSilent(aid,lid,f,v);
+  const a=getMes().find(x=>x.id===aid);
+  if(a){
+    const l=a.lineas.find(x=>x.id===lid);
+    // Si se edita manualmente una línea de reparto automático, esa pasa a ser la "fija"
+    if(l&&l.autoSplit!=null&&(f==="debe"||f==="haber"))a.manualAuto=lid;
+    if(a.lineas.some(x=>x.autoSplit!=null))recalcAutoSplit(aid);
+    if(l&&l.cuenta==="CREDITO FISCAL DTO 814"&&(f==="debe"||f==="haber")){if(a.ddjjCF!=null)a.manual814=true;}
+    recalcDerivados(a,E.mes);
+    (E.apm[E.mes]||[]).forEach(x=>{if(x!==a)recalcDerivados(x,E.mes);});
+  }
+  render();
+}
+
+// ─── REPARTO AUTOMÁTICO (ej: Caja 20% / Deudores 80% en Ventas del mes) ───────
+// Por defecto reparte el total del lado opuesto (Ventas+IVA) según los % definidos.
+// Si el usuario edita una de las líneas manualmente, la otra se recalcula para
+// que la suma siga cerrando (ej: más en Caja => menos en Deudores).
+function recalcAutoSplit(aid){
+  const a=getMes().find(x=>x.id===aid);
+  if(!a)return;
+  const autoLs=a.lineas.filter(l=>l.autoSplit!=null);
+  if(!autoLs.length)return;
+  const lado=autoLs[0]._t; // lado (D o H) donde están las líneas de reparto
+  const ladoOp=lado==="D"?"haber":"debe";
+  const campo=lado==="D"?"debe":"haber";
+  const target=a.lineas.filter(l=>l.autoSplit==null&&!l.formula).reduce((s,l)=>s+pn(l[ladoOp]),0);
+  const manualId=a.manualAuto&&autoLs.some(l=>l.id===a.manualAuto)?a.manualAuto:null;
+  if(manualId){
+    const manual=autoLs.find(l=>l.id===manualId);
+    const otras=autoLs.filter(l=>l.id!==manualId);
+    const manualVal=pn(manual[campo]);
+    const rem=Math.max(0,target-manualVal);
+    const sumPct=otras.reduce((s,l)=>s+l.autoSplit,0)||1;
+    otras.forEach(l=>{const v=rem*(l.autoSplit/sumPct);l[campo]=numStr(v);});
+  }else{
+    autoLs.forEach(l=>{const v=target*l.autoSplit;l[campo]=numStr(v);});
+  }
+}
+function resetAutoSplit(aid){
+  const a=getMes().find(x=>x.id===aid);
+  if(!a)return;
+  a.manualAuto=null;recalcAutoSplit(aid);render();
+}
+
+// Actualizar código chino de una línea
+function updCC(aid,lid,v){
+  const list=getMes();
+  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;l.ccodigo=v;l.ccManual=true;return;}}
+}
+
+function flpT(aid,lid){
+  setMes(getMes().map(a=>{if(a.id!==aid)return a;return{...a,lineas:a.lineas.map(l=>{if(l.id!==lid)return l;const d=pn(l.debe),h=pn(l.haber);const nt=l._t==="D"?"H":"D";if(d>0)return{...l,_t:nt,debe:"",haber:numStr(d)};if(h>0)return{...l,_t:nt,haber:"",debe:numStr(h)};return{...l,_t:nt};})};})
+  );render();
+}
+function togFormula(aid,lid){
+  setMes(getMes().map(a=>{if(a.id!==aid)return a;return{...a,lineas:a.lineas.map(l=>l.id!==lid?l:{...l,formula:!l.formula})};}));render();
+}
+function copM(){if(E.mes===0)return;const p=E.apm[E.mes-1]||[];setMes(p.map(a=>({...a,id:nid(),lineas:a.lineas.map(l=>({...l,id:nid(),debe:"",haber:""}))})));render();}
+
+// ─── IMPORTADORES ─────────────────────────────────────────────────────────────
+// Todos los importadores producen la misma estructura de "propuesta":
+//   E.imp.prop = {origen, items:[{per,tipo,valores,extras,meta,nota,patch}]}
+// y se confirman con el mismo circuito, que detecta si ya existe un asiento del
+// mismo tipo en ese período y deja elegir qué hacer.
+const IMP_SUBS=[
+  {k:"banco",l:"Banco"},{k:"compras",l:"Compras"},{k:"iibb",l:"IIBB"},
+  {k:"iva",l:"IVA"},{k:"f931",l:"F.931"},{k:"reten",l:"Retenciones"}];
+
+const BANCOS_IMPORT={
+  SANTANDER:{cuentaBanco:"BANCO SANTANDERCTA. CTE.",tipoIngreso:"POR INGRESOS BANCARIOS - SANTANDER",tipoEgreso:"POR EGRESOS BANCARIOS - SANTANDER",label:"Banco Santander"},
+  GALICIA:{cuentaBanco:"BANCO GALICIA CTA. CTE.",tipoIngreso:"POR INGRESOS BANCARIOS - GALICIA",tipoEgreso:"POR EGRESOS BANCARIOS - GALICIA",label:"Banco Galicia"},
+  CREDICOOP:{cuentaBanco:"BANCO CREDICOOP CTA CTE",tipoIngreso:"POR INGRESOS BANCARIOS - CREDICOOP",tipoEgreso:"POR EGRESOS BANCARIOS - CREDICOOP",label:"Banco Credicoop"},
+};
+const EXCLUIR="__EXCLUIR__";
+const PCT_814=3.80; // % de la Remuneración 1 del F.931 computable como crédito fiscal de IVA
+const MAP_COMPRAS_BASE={"PROVEEDORES":"COMPRAS","GASTOS BANCO":"COMISIONES Y GTOS. BANCARIOS",
+  "CARGAS SINDICALES NO TOMAR":EXCLUIR,"(sin cuenta)":EXCLUIR};
+
+function impSub(k){E.imp.sub=k;impReset();render();}
+function impSetBank(b){E.imp.bank=b;impReset();render();}
+function impReset(){E.imp.archivo="";E.imp.prop=null;E.imp.avisos=[];E.imp.acc={};E.imp.raw=null;E.imp.err="";}
+function impCancelar(){impReset();render();}
+
+// ─── LECTURA DE ARCHIVOS ─────────────────────────────────────────────────────
+function numAR(s){
+  if(s==null)return 0;
+  const t=String(s).replace(/[^0-9.,-]/g,"");
+  if(!t||t==="-")return 0;
+  const v=parseFloat(t.replace(/\./g,"").replace(",","."));
+  return isNaN(v)?0:v;
+}
+function numExcel(v){if(v==null||v==="")return 0;if(typeof v==="number")return v;return numAR(v);}
+// Interpreta la celda de fecha: Date de Excel, número de serie, dd/mm/aaaa o aaaa-mm.
+function ymCelda(v){
+  if(v instanceof Date)return{y:v.getFullYear(),m:v.getMonth()};
+  if(typeof v==="number"&&v>20000&&v<80000){
+    const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);
+    return{y:d.getUTCFullYear(),m:d.getUTCMonth()};
+  }
+  const t=String(v==null?"":v).trim();
+  let m=t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if(m){let y=parseInt(m[3],10);if(y<100)y+=2000;return{y,m:parseInt(m[2],10)-1};}
+  m=t.match(/^(\d{4})[\/\-.](\d{1,2})/);
+  if(m)return{y:parseInt(m[1],10),m:parseInt(m[2],10)-1};
+  const d=new Date(t);
+  if(!isNaN(d)&&t.length>5)return{y:d.getFullYear(),m:d.getMonth()};
+  return null;
+}
+function leerExcel(file,cb){
+  const r=new FileReader();
+  r.onload=function(ev){
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array",cellDates:true});
+      cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}));
+    }catch(err){impError("No pude leer el Excel: "+err.message);}
+  };
+  r.readAsArrayBuffer(file);
+}
+// Texto del PDF agrupado en líneas visuales (ordena por fila y por columna)
+function leerPDF(file,cb){
+  if(!window.pdfjsLib){impError("No se cargó la librería de PDF. Revisá la conexión a internet y recargá.");return;}
+  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const r=new FileReader();
+  r.onload=function(ev){
+    pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise.then(async pdf=>{
+      const out=[];
+      for(let p=1;p<=pdf.numPages;p++){
+        const tc=await (await pdf.getPage(p)).getTextContent();
+        const filas={};
+        tc.items.forEach(it=>{
+          if(!it.str||!it.str.trim())return;
+          const y=Math.round(it.transform[5]/2)*2;
+          (filas[y]=filas[y]||[]).push({x:it.transform[4],s:it.str});
+        });
+        Object.keys(filas).map(Number).sort((a,b)=>b-a).forEach(y=>{
+          out.push(filas[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(" ").replace(/\s+/g," ").trim());
+        });
+      }
+      cb(out);
+    }).catch(err=>impError("No pude leer el PDF: "+err.message));
+  };
+  r.readAsArrayBuffer(file);
+}
+function impError(m){E.imp.err=m;E.imp.prop=null;render();}
+function lineaNums(l){return String(l||"").match(/-?\d{1,3}(?:\.\d{3})*,\d{2}/g)||[];}
+// Busca una etiqueta y devuelve el último número de esa línea; si el PDF partió
+// la etiqueta y el importe en dos renglones, mira los dos siguientes.
+function valEtiqueta(ls,re){
+  const i=ls.findIndex(l=>re.test(l));
+  if(i<0)return null;
+  for(let j=i;j<Math.min(i+3,ls.length);j++){
+    const n=lineaNums(ls[j]);
+    if(n.length)return numAR(n[n.length-1]);
+    if(j>i&&/^[-\s$+]*$/.test(ls[j]))return 0;
+  }
+  return 0;
+}
+
+// ─── ARMADO DE ASIENTOS ──────────────────────────────────────────────────────
+// valores: {"CUENTA|D":importe, ...}. Usa la plantilla del tipo para conservar
+// las líneas de fórmula y el orden; agrega las cuentas que no estén.
+function buildDesdePlantilla(tipo,valores,meta){
+  const a=crA(tipo);
+  Object.keys(valores).forEach(k=>{
+    const p=k.lastIndexOf("|");
+    const cuenta=k.slice(0,p),lado=k.slice(p+1);
+    const v=valores[k];
+    let l=a.lineas.find(x=>x.cuenta===cuenta&&x._t===lado&&!x.formula);
+    if(!l){
+      l={id:nid(),cuenta,codigo:cod(cuenta),ccodigo:ccod(cuenta),debe:"",haber:"",
+         _t:lado,formula:false,autoSplit:null,swing:null};
+      const iCierre=a.lineas.findIndex(x=>x.formula);
+      if(iCierre>=0)a.lineas.splice(iCierre,0,l);else a.lineas.push(l);
+    }
+    if(lado==="D"){l.debe=numStr(v);l.haber="";}
+    else{l.haber=numStr(v);l.debe="";}
+  });
+  if(meta)Object.assign(a,meta);
+  return a;
+}
+
+// ─── LÍNEAS DERIVADAS (crédito fiscal DTO 814) ───────────────────────────────
+// El 814 se carga en el asiento de sueldos. En la DDJJ de IVA viene sumado
+// dentro del crédito fiscal, así que el crédito fiscal contable = total de la
+// DDJJ menos el 814 del mes.
+function cf814DelMes(per){
+  let v=0;
+  (E.apm[per]||[]).forEach(a=>{
+    if(a.tipo!=="POR DEVENGAMIENTO DE SUELDOS")return;
+    a.lineas.forEach(l=>{if(l.cuenta==="CREDITO FISCAL DTO 814"&&l._t==="D")v+=pn(l.debe);});
+  });
+  return v;
+}
+function recalcDerivados(a,per){
+  if(a.ddjjContrib!=null){
+    const l8=a.lineas.find(l=>l.cuenta==="CREDITO FISCAL DTO 814"&&l._t==="D");
+    const lc=a.lineas.find(l=>l.cuenta==="CARGAS SOCIALES"&&l._t==="D");
+    if(lc){lc.debe=numStr(a.ddjjContrib-(l8?pn(l8.debe):0));lc.haber="";lc.derivado=true;}
+  }
+  if(a.ddjjCF!=null){
+    const l8=a.lineas.find(l=>l.cuenta==="CREDITO FISCAL DTO 814"&&l._t==="H");
+    if(l8&&!a.manual814){l8.haber=numStr(cf814DelMes(per));l8.debe="";}
+    const lc=a.lineas.find(l=>l.cuenta==="D.G.I. I.V.A. CRÉDITO FISCAL"&&l._t==="H");
+    if(lc){lc.haber=numStr(a.ddjjCF-(l8?pn(l8.haber):0));lc.debe="";lc.derivado=true;}
+  }
+}
+
+// ─── CONFIRMACIÓN GENÉRICA ───────────────────────────────────────────────────
+function impAcc(i,v){E.imp.acc[i]=v;render();}
+function impExiste(per,tipo){return (E.apm[per]||[]).some(a=>a.tipo===tipo);}
+function impConfirmar(){
+  const p=E.imp.prop;if(!p||!p.items.length)return;
+  let n=0;
+  p.items.forEach((it,idx)=>{
+    const acc=E.imp.acc[idx]||(impExiste(it.per,it.tipo)?"reemplazar":"agregar");
+    if(acc==="omitir")return;
+    const lista=[...(E.apm[it.per]||[])];
+    if(it.patch){
+      let a=lista.find(x=>x.tipo===it.tipo);
+      if(!a){a=crA(it.tipo);lista.push(a);}
+      let l=a.lineas.find(x=>x.cuenta===it.patch.cuenta&&x._t===it.patch.t);
+      if(!l){
+        l={id:nid(),cuenta:it.patch.cuenta,codigo:cod(it.patch.cuenta),ccodigo:ccod(it.patch.cuenta),
+           debe:"",haber:"",_t:it.patch.t,formula:false,autoSplit:null,swing:null};
+        const iC=a.lineas.findIndex(x=>x.formula);
+        if(iC>=0)a.lineas.splice(iC,0,l);else a.lineas.push(l);
+      }
+      const campo=it.patch.t==="D"?"debe":"haber";
+      const base=acc==="sumar"?pn(l[campo]):0;
+      l[campo]=numStr(base+it.patch.monto);
+      l[it.patch.t==="D"?"haber":"debe"]="";
+    }else{
+      const a=buildDesdePlantilla(it.tipo,it.valores,it.meta);
+      const i=lista.findIndex(x=>x.tipo===it.tipo);
+      if(acc==="reemplazar"&&i>=0)lista[i]=a;else lista.push(a);
+      recalcDerivados(a,it.per);
+    }
+    E.apm={...E.apm,[it.per]:lista};
+    n++;
+  });
+  const primerPer=p.items.length?p.items[0].per:E.mes;
+  impReset();
+  E.vista="carga";E.mes=primerPer;
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v==="carga"));
+  render();
+  alert("Importación completa: "+n+" asiento(s).");
+}
+
+// ─── 1. BANCO ────────────────────────────────────────────────────────────────
+function impArchivoBanco(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  E.imp.archivo=f.name;E.imp.err="";
+  leerExcel(f,rows=>{
+    try{
+      const cfg=BANCOS_IMPORT[E.imp.bank];
+      const hi=rows.findIndex(r=>r&&r.some(c=>/^cuenta$/i.test(String(c||"").trim())));
+      if(hi<0)throw new Error("no encontré la columna 'cuenta'");
+      const H=rows[hi].map(c=>String(c||"").trim().toLowerCase());
+      const iM=H.findIndex(h=>h==="mes"||h==="fecha"),iC=H.indexOf("cuenta"),iI=H.findIndex(h=>h.includes("importe"));
+      if(iM<0||iI<0)throw new Error("faltan las columnas 'mes' e 'Importe Pesos'");
+      const agg={};let fuera=0,ilegibles=0;const noEnc=new Set();
+      for(let r=hi+1;r<rows.length;r++){
+        const f2=rows[r];if(!f2)continue;
+        const ym=ymCelda(f2[iM]);
+        const cta=String(f2[iC]==null?"":f2[iC]).trim();
+        const v=numExcel(f2[iI]);
+        if(!cta||!v)continue;
+        if(!ym){ilegibles++;continue;}
+        const per=perDeFecha(ym.y,ym.m);
+        if(per<0){fuera++;continue;}
+        if(!cod(cta))noEnc.add(cta);
+        const k=per+"|"+cta;agg[k]=(agg[k]||0)+v;
+      }
+      const porPer={};
+      Object.keys(agg).forEach(k=>{
+        const i=k.indexOf("|"),per=parseInt(k.slice(0,i)),cta=k.slice(i+1),v=agg[k];
+        if(Math.abs(v)<0.01)return;
+        (porPer[per]=porPer[per]||{})[cta]=v;
+      });
+      const items=[];
+      Object.keys(porPer).map(Number).sort((a,b)=>a-b).forEach(per=>{
+        const ing={},egr={};let hayI=false,hayE=false;
+        Object.keys(porPer[per]).forEach(c=>{
+          const v=porPer[per][c];
+          if(v>0){ing[c+"|H"]=v;hayI=true;}else{egr[c+"|D"]=-v;hayE=true;}
+        });
+        if(hayI)items.push({per,tipo:cfg.tipoIngreso,valores:ing});
+        if(hayE)items.push({per,tipo:cfg.tipoEgreso,valores:egr});
+      });
+      const av=[];
+      if(fuera)av.push(fuera+" movimientos quedaron afuera: su fecha no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+").");
+      if(ilegibles)av.push(ilegibles+" filas tienen una fecha que no pude interpretar.");
+      if(noEnc.size)av.push("Cuentas que no están en el Plan de Cuentas: "+[...noEnc].join(", ")+". Se importan igual pero quedan sin código.");
+      E.imp.prop={origen:"banco",items};E.imp.avisos=av;E.imp.acc={};
+      render();
+    }catch(err){impError("No pude procesar el archivo: "+err.message);}
+  });
+}
+
+// ─── 2. COMPRAS ──────────────────────────────────────────────────────────────
+function mapCompra(nombre){
+  const m=DB.mapCompras||{};
+  if(m[nombre]!==undefined)return m[nombre];
+  if(MC.some(x=>x.n===nombre))return nombre;
+  return "";
+}
+function mapCompraSet(k,v){
+  if(!DB.mapCompras)DB.mapCompras={};
+  DB.mapCompras[k]=v;
+  construirCompras();render();
+}
+function impArchivoCompras(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  E.imp.archivo=f.name;E.imp.err="";
+  leerExcel(f,rows=>{
+    try{
+      const hi=rows.findIndex(r=>r&&r.some(c=>/neto\s*gravado/i.test(String(c||""))));
+      if(hi<0)throw new Error("no encontré la fila de encabezados (falta 'Neto Gravado')");
+      const H=rows[hi].map(c=>String(c||"").trim().toLowerCase());
+      const col=(...alts)=>{
+        for(const a of alts){const i=H.findIndex(h=>h===a);if(i>=0)return i;}
+        for(const a of alts){const i=H.findIndex(h=>h.indexOf(a)>=0);if(i>=0)return i;}
+        return -1;
+      };
+      const iP=col("ddjj","periodo","período"),iF=col("fecha"),iG=col("neto gravado"),
+            iN=col("no gravado"),iE=col("exento"),iI=col("iva"),iT=col("total"),iC=col("cuenta");
+      if(iG<0||iI<0||iC<0)throw new Error("faltan columnas: se esperan Neto Gravado, IVA y CUENTA");
+      const datos={};const det={};let ileg=0,fuera=0,soloTotal=0;
+      for(let r=hi+1;r<rows.length;r++){
+        const f2=rows[r];if(!f2)continue;
+        const ym=(iP>=0?ymCelda(f2[iP]):null)||(iF>=0?ymCelda(f2[iF]):null);
+        const cta=String(f2[iC]==null?"":f2[iC]).trim()||"(sin cuenta)";
+        let neto=numExcel(f2[iG])+numExcel(iN>=0?f2[iN]:0)+numExcel(iE>=0?f2[iE]:0);
+        const iva=numExcel(f2[iI]);
+        const tot=iT>=0?numExcel(f2[iT]):0;
+        if(!neto&&!iva){if(!tot)continue;neto=tot;soloTotal++;}
+        if(!ym){ileg++;continue;}
+        det[cta]=true;
+        const per=perDeFecha(ym.y,ym.m);
+        if(per<0){fuera++;continue;}
+        const d=datos[per]=datos[per]||{cuentas:{},iva:0,total:0};
+        d.cuentas[cta]=(d.cuentas[cta]||0)+neto;
+        d.iva+=iva;d.total+=tot;
+      }
+      E.imp.raw={origen:"compras",datos,detectadas:Object.keys(det).sort(),ileg,fuera,soloTotal};
+      if(!DB.mapCompras)DB.mapCompras={...MAP_COMPRAS_BASE};
+      construirCompras();render();
+    }catch(err){impError("No pude procesar el archivo: "+err.message);}
+  });
+}
+function construirCompras(){
+  const raw=E.imp.raw;if(!raw||raw.origen!=="compras")return;
+  const items=[],sinMapa=new Set();
+  Object.keys(raw.datos).map(Number).sort((a,b)=>a-b).forEach(per=>{
+    const d=raw.datos[per];const val={};let neto=0;
+    Object.keys(d.cuentas).forEach(c=>{
+      const dest=mapCompra(c);
+      if(dest===EXCLUIR)return;
+      if(!dest){sinMapa.add(c);return;}
+      val[dest+"|D"]=(val[dest+"|D"]||0)+d.cuentas[c];
+      neto+=d.cuentas[c];
+    });
+    if(d.iva)val["D.G.I. I.V.A. CRÉDITO FISCAL|D"]=d.iva;
+    if(!Object.keys(val).length)return;
+    const dif=d.total-(neto+d.iva);
+    items.push({per,tipo:"POR LAS COMPRAS",valores:val,
+      nota:Math.abs(dif)>1?"El total del Excel supera a neto + IVA en "+fmtD(dif)+" (percepciones): cargalas a mano.":""});
+  });
+  const av=[];
+  if(raw.fuera)av.push(raw.fuera+" comprobantes quedaron afuera del ejercicio "+ejLabel()+".");
+  if(raw.ileg)av.push(raw.ileg+" filas tienen una fecha que no pude interpretar.");
+  if(raw.soloTotal)av.push(raw.soloTotal+" comprobantes venían sin discriminar: tomé el Total como neto.");
+  if(sinMapa.size)av.push("Sin equivalencia y por eso excluidas: "+[...sinMapa].join(", ")+".");
+  E.imp.prop={origen:"compras",items};E.imp.avisos=av;E.imp.acc={};
+}
+
+// ─── 3. IIBB (PDF) ───────────────────────────────────────────────────────────
+function impArchivoIIBB(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  E.imp.archivo=f.name;E.imp.err="";
+  leerPDF(f,ls=>{
+    try{
+      const txt=ls.join(" | ");
+      const mp=txt.match(/Periodo:?\s*(20\d{2})-(0[1-9]|1[0-2])/i)||txt.match(/IB\d{11}(20\d{2})(0[1-9]|1[0-2])IB/);
+      if(!mp)throw new Error("no encontré el período de la DDJJ");
+      const det=valEtiqueta(ls,/Total\s+Impuesto\s+Determinado/i);
+      const ret=valEtiqueta(ls,/Total\s+Retenciones\s+y\s+Percepciones/i);
+      if(det==null||ret==null)throw new Error("no encontré el impuesto determinado o las retenciones");
+      const saldoAnt=valEtiqueta(ls,/Saldo\s+a\s+favor\s+Dec\w*\s+Jurada\s+Anterior/i)||0;
+      const aIng=valEtiqueta(ls,/Monto\s+a\s+Ingresar/i)||0;
+      const y=parseInt(mp[1],10),m=parseInt(mp[2],10)-1;
+      const per=perDeFecha(y,m);
+      if(per<0)throw new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");
+      const val={"D.G.R. INGRESOS BRUTOS|D":det,"RETEN. Y PERCEP. IIBB|H":ret};
+      if(saldoAnt)val["SDO. FAVOR IMP A LOS INGRESOS BRUTOS|H"]=saldoAnt;
+      const av=[];
+      const arr=per>0?saldoCuentaHastaMes("SDO. FAVOR IMP A LOS INGRESOS BRUTOS",per):0;
+      if(Math.abs(arr-saldoAnt)>1)av.push("El saldo a favor del mes anterior que trae el PDF ("+fmtD(saldoAnt)+") no coincide con el que viene arrastrando el sistema ("+fmtD(arr)+"). Revisalo.");
+      const neto=det-ret-saldoAnt;
+      if(Math.abs(Math.max(0,neto)-aIng)>1)av.push("Cuidado: el monto a ingresar del PDF es "+fmtD(aIng)+" y de estos datos sale "+fmtD(neto)+".");
+      E.imp.prop={origen:"iibb",items:[{per,tipo:"POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES",valores:val,
+        nota:"Determinado "+fmtD(det)+" menos retenciones "+fmtD(ret)+(saldoAnt?" menos saldo a favor anterior "+fmtD(saldoAnt):"")+" = "+fmtD(neto)}]};
+      E.imp.avisos=av;E.imp.acc={};render();
+    }catch(err){impError("No pude leer la DDJJ: "+err.message);}
+  });
+}
+
+// ─── 4. IVA (PDF F.2051) ─────────────────────────────────────────────────────
+function impArchivoIVA(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  E.imp.archivo=f.name;E.imp.err="";
+  leerPDF(f,ls=>{
+    try{
+      let y=null,m=null;
+      const i=ls.findIndex(l=>/^Per[ií]odo\b/i.test(l));
+      for(let j=(i<0?0:i);j<ls.length&&y===null;j++){
+        const mm=ls[j].match(/\b(20\d{2})(0[1-9]|1[0-2])\b/);
+        if(mm){y=parseInt(mm[1],10);m=parseInt(mm[2],10)-1;}
+      }
+      if(y===null)throw new Error("no encontré el período");
+      const deb=valEtiqueta(ls,/Total\s+del\s+d[eé]bito\s+fiscal/i);
+      const cre=valEtiqueta(ls,/Total\s+del\s+cr[eé]dito\s+fiscal/i);
+      if(deb==null||cre==null)throw new Error("no encontré el débito o el crédito fiscal");
+      const ret=valEtiqueta(ls,/Total\s+de\s+retenciones,\s*percepciones/i)||0;
+      const per=perDeFecha(y,m);
+      if(per<0)throw new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");
+      const c814=cf814DelMes(per);
+      const val={"I.V.A. DÉBITO FISCAL|D":deb,"RETEN. Y PERCEP. I.V.A.|H":ret,
+                 "CREDITO FISCAL DTO 814|H":c814,"D.G.I. I.V.A. CRÉDITO FISCAL|H":cre-c814};
+      const av=[];
+      const chk=getIvaCheck(per);
+      if(chk.vVentas>0&&Math.abs(chk.vVentas-deb)>1)
+        av.push("El débito fiscal del PDF ("+fmtD(deb)+") no coincide con el del asiento de Ventas de ese mes ("+fmtD(chk.vVentas)+").");
+      if(!c814)av.push("No encontré crédito fiscal del DTO 814 en el asiento de sueldos de ese mes, así que el crédito fiscal va entero. Cuando cargues el 814 en Sueldos, este asiento se ajusta solo.");
+      E.imp.prop={origen:"iva",items:[{per,tipo:"POR ASIENTO I.V.A. DEL MES",valores:val,meta:{ddjjCF:cre},
+        nota:"Crédito fiscal de la DDJJ "+fmtD(cre)+" menos DTO 814 "+fmtD(c814)+" = "+fmtD(cre-c814)}]};
+      E.imp.avisos=av;E.imp.acc={};render();
+    }catch(err){impError("No pude leer la DDJJ de IVA: "+err.message);}
+  });
+}
+
+// ─── 5. F.931 (PDF) ──────────────────────────────────────────────────────────
+function impArchivo931(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  E.imp.archivo=f.name;E.imp.err="";
+  leerPDF(f,ls=>{
+    try{
+      const mp=ls.join(" | ").match(/(0[1-9]|1[0-2])\/(20\d{2})/);
+      if(!mp)throw new Error("no encontré el período");
+      const codv=c=>{
+        const re=new RegExp("\\b"+c+"\\s*-\\s*[^0-9]{0,60}?(-?\\d{1,3}(?:\\.\\d{3})*,\\d{2})");
+        const l=ls.find(x=>re.test(x));
+        return l?numAR(l.match(re)[1]):0;
+      };
+      const aporSS=codv("301"),aporOS=codv("302"),conSS=codv("351"),conOS=codv("352"),
+            lrt=codv("312"),scvo=codv("028"),renatre=codv("360"),vales=codv("270"),uatre=codv("935");
+      const contrib=conSS+conOS+lrt+scvo+renatre+vales+uatre;
+      const aportes=aporSS+aporOS;
+      if(!contrib&&!aportes)throw new Error("no encontré la sección de montos que se ingresan");
+      // El crédito fiscal del DTO 814 es el 3,80% de la Remuneración 1
+      const rem1=valEtiqueta(ls,/Suma\s+de\s+Rem\.\s*1\s*:/i)||0;
+      const c814=Math.round(rem1*PCT_814)/100;
+      const y=parseInt(mp[2],10),m=parseInt(mp[1],10)-1;
+      const per=perDeFecha(y,m);
+      if(per<0)throw new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");
+      const val={"CARGAS SOCIALES|D":contrib-c814,"CREDITO FISCAL DTO 814|D":c814,
+                 "CARGAS SOCIALES A PAGAR|H":contrib+aportes};
+      E.imp.prop={origen:"f931",items:[{per,tipo:"POR DEVENGAMIENTO DE SUELDOS",valores:val,meta:{ddjjContrib:contrib},
+        nota:"Contribuciones "+fmtD(contrib)+" + aportes retenidos "+fmtD(aportes)+" = "+fmtD(contrib+aportes)+" a pagar &middot; DTO 814 = 3,80% de la Rem. 1 ("+fmtD(rem1)+") = "+fmtD(c814)}]};
+      E.imp.avisos=["Del F.931 salen las cargas sociales y el crédito fiscal del DTO 814 (3,80% de la Remuneración 1). El bruto de Sueldos y Jornales y las retenciones sindicales los cargás del libro de sueldos.",
+        "Si corregís el 814 a mano, Cargas Sociales se ajusta solo para que el total siga siendo "+fmtD(contrib)+"."];
+      E.imp.acc={};render();
+    }catch(err){impError("No pude leer el F.931: "+err.message);}
+  });
+}
+
+// ─── 6. RETENCIONES SUFRIDAS (Excel) ─────────────────────────────────────────
+const RETEN_TIPOS={
+  GANANCIAS:{cuenta:"RETENCIONES GANANCIAS",label:"Ganancias"},
+  SUSS:{cuenta:"RETENCIONES SUSS",label:"SUSS"},
+  IIBB:{cuenta:"RETEN. Y PERCEP. IIBB",label:"IIBB"},
+  IVA:{cuenta:"RETEN. Y PERCEP. I.V.A.",label:"IVA"},
+};
+function impSetReten(k){E.imp.reten=k;impReset();render();}
+function impArchivoReten(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  E.imp.archivo=f.name;E.imp.err="";
+  const cfg=RETEN_TIPOS[E.imp.reten||"GANANCIAS"];
+  leerExcel(f,rows=>{
+    try{
+      const hi=rows.findIndex(r=>r&&r.some(c=>/importe/i.test(String(c||""))));
+      if(hi<0)throw new Error("no encontré una columna de Importe");
+      const H=rows[hi].map(c=>String(c||"").trim().toLowerCase());
+      const iF=H.findIndex(h=>/fecha/.test(h)),iI=H.findIndex(h=>/importe/.test(h)),
+            iO=H.findIndex(h=>/operaci/.test(h));
+      if(iF<0||iI<0)throw new Error("faltan las columnas de Fecha e Importe");
+      const porPer={};let n=0,om=0,fuera=0,ileg=0;
+      for(let r=hi+1;r<rows.length;r++){
+        const f2=rows[r];if(!f2)continue;
+        const v=numExcel(f2[iI]);if(!v)continue;
+        const ym=ymCelda(f2[iF]);
+        if(!ym){ileg++;continue;}
+        if(iO>=0&&!/retenc/i.test(String(f2[iO]||""))){om++;continue;}
+        const per=perDeFecha(ym.y,ym.m);
+        if(per<0){fuera++;continue;}
+        porPer[per]=(porPer[per]||0)+v;n++;
+      }
+      const items=Object.keys(porPer).map(Number).sort((a,b)=>a-b).map(per=>({
+        per,tipo:"POR COBRO DE VENTAS EN CUENTA CORRIENTE",
+        patch:{cuenta:cfg.cuenta,t:"D",monto:porPer[per]},
+        valores:{},nota:"Retenciones de "+cfg.label+" del mes: "+fmtD(porPer[per])
+      }));
+      const av=[];
+      if(om)av.push(om+" filas se omitieron porque no son retenciones (percepciones, devoluciones).");
+      if(fuera)av.push(fuera+" certificados quedaron afuera del ejercicio "+ejLabel()+".");
+      if(ileg)av.push(ileg+" filas tienen una fecha que no pude interpretar.");
+      av.push("Se carga la línea "+cfg.cuenta+" del asiento de cobro de ventas. Si el asiento no existe todavía, se crea.");
+      E.imp.prop={origen:"reten",items};E.imp.avisos=av;E.imp.acc={};render();
+    }catch(err){impError("No pude procesar el archivo: "+err.message);}
+  });
+}
+
+// ─── EMPRESAS Y EJERCICIOS ───────────────────────────────────────────────────
+function empAdd(){
+  const n=(document.getElementById("emp-n")||{}).value;
+  const nombre=(n||"").trim();
+  if(!nombre){alert("Poné el nombre de la empresa.");return;}
+  const c=(document.getElementById("emp-c")||{}).value;
+  const id=uid("e");
+  DB.empresas.push({id,nombre,cuit:(c||"").trim()});
+  E.emp=id;render();
+}
+function empUpd(id,campo,v){const e=getEmp(id);if(!e)return;e[campo]=String(v).trim()||e[campo];render();}
+function empDel(id){
+  const ejs=DB.ejercicios.filter(x=>x.emp===id);
+  const e=getEmp(id);
+  if(!confirm("Se borra «"+(e?e.nombre:id)+"» y sus "+ejs.length+" ejercicio(s), con todos los asientos y saldos cargados. Esto no se puede deshacer.\n\n¿Seguir?"))return;
+  ejs.forEach(j=>{delete DB.saldos[j.id];delete DB.asientos[j.id];});
+  DB.ejercicios=DB.ejercicios.filter(x=>x.emp!==id);
+  DB.empresas=DB.empresas.filter(x=>x.id!==id);
+  const sig=DB.ejercicios.length?DB.ejercicios[0].id:null;
+  if(MODO_LOCAL){activarEjercicio(sig);render();}
+  else Promise.all(ejs.map(j=>borrarEjercicioNube(j.id))).then(()=>abrirEjercicio(sig)).catch(e=>alert("No pude borrarlo de la nube: "+fbErr(e)));
+}
+function ejAdd(){
+  const g=i=>{const el=document.getElementById(i);return el?el.value:"";};
+  const emp=g("ej-emp"),nom=g("ej-nom").trim(),ini=g("ej-ini");
+  let meses=parseInt(g("ej-meses")||"12",10);
+  if(!emp){alert("Primero cargá una empresa.");return;}
+  if(!nom){alert("Poné un nombre para el ejercicio (por ejemplo 2026 o Ejercicio 17).");return;}
+  if(!/^\d{4}-\d{2}$/.test(ini)){alert("Elegí el mes de inicio del ejercicio.");return;}
+  if(!(meses>0&&meses<=24))meses=12;
+  const id=uid("j");
+  DB.ejercicios.push({id,emp,nom,ini,meses});
+  DB.saldos[id]={};DB.asientos[id]={};
+  activarEjercicio(id);render();guardarDatos();
+}
+function ejUpd(id,campo,v){
+  const e=getEj(id);if(!e)return;
+  if(campo==="meses"){const n=parseInt(v,10);e.meses=(n>0&&n<=24)?n:12;}
+  else if(campo==="ini"){if(/^\d{4}-\d{2}$/.test(v))e.ini=v;}
+  else e[campo]=String(v).trim()||e[campo];
+  if(E.mes>=nPer())E.mes=0;
+  render();
+}
+function ejDel(id){
+  const e=getEj(id);
+  const n=Object.values(DB.asientos[id]||{}).reduce((a,b)=>a+b.length,0);
+  if(!confirm("Se borra el ejercicio «"+(e?e.nom:id)+"» con sus "+n+" asientos y sus saldos iniciales. Esto no se puede deshacer.\n\n¿Seguir?"))return;
+  delete DB.saldos[id];delete DB.asientos[id];
+  DB.ejercicios=DB.ejercicios.filter(x=>x.id!==id);
+  const q=DB.ejercicios.filter(x=>x.emp===E.emp);
+  const sig=q.length?q[0].id:(DB.ejercicios[0]?DB.ejercicios[0].id:null);
+  if(MODO_LOCAL){activarEjercicio(sig);render();}
+  else borrarEjercicioNube(id).then(()=>abrirEjercicio(sig)).catch(e=>alert("No pude borrarlo de la nube: "+fbErr(e)));
+}
+function ejAnterior(ej){
+  const c=DB.ejercicios.filter(x=>x.emp===ej.emp&&x.id!==ej.id&&String(x.ini)<String(ej.ini));
+  c.sort((a,b)=>String(a.ini)<String(b.ini)?1:-1);
+  return c[0]||null;
+}
+
+// ─── COPIAS DE RESPALDO ──────────────────────────────────────────────────────
+async function expBackup(){
+  if(!MODO_LOCAL){
+    estado("info","Preparando copia\u2026");
+    try{for(const ej of DB.ejercicios)await traerEjercicio(ej.id);}
+    catch(e){alert("No pude bajar todos los ejercicios: "+fbErr(e));return;}
+    estado("ok");
+  }
+  const bl=new Blob([JSON.stringify(DB,null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(bl);
+  a.download="contabilidad_"+new Date().toISOString().slice(0,10)+".json";a.click();
+}
+function impBackup(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=function(ev){
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(!d||!d.empresas||!d.ejercicios||!d.cuentas)throw new Error("no tiene la estructura esperada");
+      if(!confirm("Esto reemplaza TODO lo que hay cargado ahora por el contenido de la copia. ¿Seguir?"))return;
+      DB=d;MC=DB.cuentas;
+      if(!DB.saldos)DB.saldos={};if(!DB.asientos)DB.asientos={};
+      if(MODO_LOCAL){activarEjercicio(DB.ejercicios.length?DB.ejercicios[0].id:null);render();alert("Copia restaurada.");}
+      else subirTodo().then(()=>abrirEjercicio(DB.ejercicios.length?DB.ejercicios[0].id:null))
+        .then(()=>alert("Copia restaurada y subida a la nube."))
+        .catch(er=>alert("No pude subir la copia: "+fbErr(er)));
+    }catch(err){alert("No pude leer la copia: "+err.message);}
+  };
+  r.readAsText(f);
+  input.value="";
+}
+function borrarTodo(){
+  if(!confirm("Se borra todo: empresas, ejercicios, asientos y saldos. ¿Seguro?"))return;
+  if(!confirm("Última confirmación. Si no exportaste una copia, esto no se recupera."))return;
+  const viejos=DB.ejercicios.map(x=>x.id);
+  DB=dbVacia();MC=DB.cuentas;
+  if(MODO_LOCAL){activarEjercicio(DB.ejercicios[0].id);render();return;}
+  Promise.all(viejos.map(borrarEjercicioNube)).then(subirTodo)
+    .then(()=>abrirEjercicio(DB.ejercicios[0].id))
+    .catch(e=>alert("No pude limpiar la nube: "+fbErr(e)));
+}
+
+// ─── ARRASTRE DE SALDOS ENTRE EJERCICIOS ─────────────────────────────────────
+function esCtaResultado(cta){
+  const m=DB.cuentas.find(x=>x.n===cta);
+  if(!m)return false;
+  const c=(m.c&&m.c!=="XXXXX")?m.c:(m.cc||"");
+  return c&&(c[0]==="3"||c[0]==="4");
+}
+// Saldo neto (Debe - Haber) de cada cuenta al cierre de un ejercicio
+function saldosFinales(ejId){
+  const out={};
+  const si=DB.saldos[ejId]||{};
+  Object.keys(si).forEach(c=>{out[c]=(out[c]||0)+(si[c].d||0)-(si[c].h||0);});
+  const per=DB.asientos[ejId]||{};
+  Object.keys(per).forEach(k=>{
+    (per[k]||[]).forEach(a=>a.lineas.forEach(l=>{
+      if(!l.cuenta)return;
+      let d=pn(l.debe),hv=pn(l.haber);
+      if(l.formula){const v=calcFormula(a,l);if(l._t==="D")d=v;else hv=v;}
+      out[l.cuenta]=(out[l.cuenta]||0)+d-hv;
+    }));
+  });
+  return out;
+}
+async function arrastrarSaldos(){
+  const ej=getEj();if(!ej)return;
+  const prev=ejAnterior(ej);
+  if(!prev){alert("No hay un ejercicio anterior cargado para "+empLabel()+".");return;}
+  try{await traerEjercicio(prev.id);}catch(e){alert("No pude leer el ejercicio anterior: "+fbErr(e));return;}
+  const el=document.getElementById("si-refundir");
+  const refundir=el?el.checked:true;
+  if(Object.keys(SALDOS_INIT).length&&
+     !confirm("Esto reemplaza los saldos iniciales actuales por los saldos de cierre de «"+prev.nom+"». ¿Seguir?"))return;
+  const fin=saldosFinales(prev.id);
+  const nuevo={};let rdo=0;
+  Object.keys(fin).forEach(c=>{
+    const v=fin[c];
+    if(Math.abs(v)<0.005)return;
+    if(refundir&&esCtaResultado(c)){rdo+=v;return;}
+    nuevo[c]=v>0?{d:v,h:0}:{d:0,h:-v};
+  });
+  if(refundir&&Math.abs(rdo)>=0.005){
+    const rna="RESULTADOS NO ASIGNADOS";
+    const base=nuevo[rna]?(nuevo[rna].d-nuevo[rna].h):0;
+    const t=base+rdo;
+    nuevo[rna]=t>0?{d:t,h:0}:{d:0,h:-t};
+  }
+  DB.saldos[ej.id]=nuevo;SALDOS_INIT=nuevo;
+  render();
+  alert("Listo: se trajeron "+Object.keys(nuevo).length+" cuentas desde el cierre de «"+prev.nom+"»."+
+    (refundir?"\n\nLas cuentas de resultado se refundieron en Resultados No Asignados.":""));
+}
+
+// ─── SALDOS INICIALES ─────────────────────────────────────────────────────────
+function siUpdSilent(cta,campo,val){
+  if(!SALDOS_INIT[cta])SALDOS_INIT[cta]={d:0,h:0};
+  SALDOS_INIT[cta][campo]=pn(val);
+}
+function siAdd(){
+  const n=document.getElementById("si-nc")?.value.trim();
+  if(!n)return;
+  if(!SALDOS_INIT[n])SALDOS_INIT[n]={d:0,h:0};
+  document.getElementById("si-nc").value="";
+  render();
+}
+function siDel(cta){delete SALDOS_INIT[cta];render();}
+
+// ─── AUTOCOMPLETE ─────────────────────────────────────────────────────────────
+function getAC(q){if(!q)return MC.map(m=>m.n).sort().slice(0,10);return MC.map(m=>m.n).filter(n=>n.toLowerCase().includes(q.toLowerCase())).slice(0,10);}
+
+// ─── SALIDAS ──────────────────────────────────────────────────────────────────
+// Formato chino: numeración correlativa por mes (todos los del mes en orden)
+// Los asientos se numeran considerando todos los meses en orden, pero al exportar
+// un mes se muestra la correlativa acumulada hasta ese mes.
+function getChino(){
+  const f=fechaFinPer(E.mes);
+  // Número de asiento acumulado de meses anteriores
+  let prevCount=0;
+  for(let m=0;m<E.mes;m++){prevCount+=(E.apm[m]||[]).length;}
+  return getMes().flatMap((a,ai)=>{
+    const rows=[];let pi=0;
+    a.lineas.forEach(l=>{
+      let d=pn(l.debe),h=pn(l.haber);
+      if(l.formula){const v=calcFormula(a,l);if(l._t==="D")d=v;else h=v;}
+      if(d===0&&h===0)return;
+      const cc=l.ccodigo||ccod(l.cuenta)||"XXXXX";
+      const ccDesc=chinoDesc(cc);
+      pi++;rows.push({nA:prevCount+ai+1,nP:pi,fecha:f,concepto:a.tipo,
+        codigo:l.codigo||cod(l.cuenta)||"XXXXX",
+        ccodigo:cc,ccodigoDesc:ccDesc,
+        importe:d?d:-h,cuenta:l.cuenta,esFormula:l.formula});
+    });
+    return rows;
+  });
+}
+
+// Formato chino AGRUPADO: agrupa por código alternativo dentro del mismo asiento
+function getChinoAgrupado(){
+  const f=fechaFinPer(E.mes);
+  let prevCount=0;
+  for(let m=0;m<E.mes;m++){prevCount+=(E.apm[m]||[]).length;}
+  return getMes().flatMap((a,ai)=>{
+    // Agrupar líneas por ccodigo
+    const grupos={};
+    a.lineas.forEach(l=>{
+      let d=pn(l.debe),h=pn(l.haber);
+      if(l.formula){const v=calcFormula(a,l);if(l._t==="D")d=v;else h=v;}
+      if(d===0&&h===0)return;
+      const cc=l.ccodigo||ccod(l.cuenta)||"XXXXX";
+      const importe=d?d:-h;
+      if(!grupos[cc])grupos[cc]={cc,desc:chinoDesc(cc),importe:0,cuentas:[]};
+      grupos[cc].importe+=importe;
+      grupos[cc].cuentas.push(l.cuenta);
+    });
+    let pi=0;
+    return Object.values(grupos).map(g=>{
+      pi++;
+      return{nA:prevCount+ai+1,nP:pi,fecha:f,concepto:a.tipo,
+        ccodigo:g.cc,ccDesc:g.desc,importe:g.importe,cuentas:g.cuentas.join(" / ")};
+    });
+  });
+}
+
+function getTodosAsientos(){
+  // Devuelve todos los asientos de todos los meses, con el mes al que pertenecen
+  const todos=[];
+  for(let m=0;m<nPer();m++){
+    (E.apm[m]||[]).forEach(a=>todos.push({...a,_mes:m}));
+  }
+  return todos;
+}
+
+function getMayores(){
+  // Acumula movimientos de TODOS los meses
+  const map={};
+  const movPorMes={}; // para desglosar por mes si se quiere
+  getTodosAsientos().forEach(a=>{
+    a.lineas.forEach(l=>{
+      const c=l.cuenta||"(sin cuenta)";
+      if(!map[c])map[c]={cuenta:c,codigo:l.codigo||cod(l.cuenta)||"",debe:0,haber:0,porMes:{}};
+      let d=pn(l.debe),h=pn(l.haber);
+      if(l.formula){const v=calcFormula(a,l);if(l._t==="D")d=v;else h=v;}
+      map[c].debe+=d;map[c].haber+=h;
+      if(!map[c].porMes[a._mes])map[c].porMes[a._mes]={d:0,h:0};
+      map[c].porMes[a._mes].d+=d;
+      map[c].porMes[a._mes].h+=h;
+    });
+  });
+  Object.keys(SALDOS_INIT).forEach(c=>{if(!map[c])map[c]={cuenta:c,codigo:cod(c)||"",debe:0,haber:0,porMes:{}};});
+  return Object.values(map).sort((a,b)=>a.cuenta.localeCompare(b.cuenta));
+}
+
+// Mayor Chino: agrupa movimientos de TODOS los meses por código alternativo
+function getMayorChino(){
+  const map={};
+  getTodosAsientos().forEach(a=>{
+    a.lineas.forEach(l=>{
+      const cc=l.ccodigo||ccod(l.cuenta)||"XXXXX";
+      if(!map[cc])map[cc]={cc,desc:chinoDesc(cc),debe:0,haber:0};
+      let d=pn(l.debe),h=pn(l.haber);
+      if(l.formula){const v=calcFormula(a,l);if(l._t==="D")d=v;else h=v;}
+      map[cc].debe+=d;map[cc].haber+=h;
+    });
+  });
+  return Object.values(map).sort((a,b)=>a.cc.localeCompare(b.cc));
+}
+
+// Total general acumulado de todos los meses (para el cuadre en Mayores)
+function tGTodos(){
+  const todos=getTodosAsientos();
+  const d=todos.reduce((s,a)=>s+a.lineas.reduce((ss,l)=>ss+pn(l.debe)+(l.formula&&l._t==="D"?calcFormula(a,l):0),0),0);
+  const h=todos.reduce((s,a)=>s+a.lineas.reduce((ss,l)=>ss+pn(l.haber)+(l.formula&&l._t==="H"?calcFormula(a,l):0),0),0);
+  return{d,h,ok:Math.abs(d-h)<0.02};
+}
+
+function expCSV(){
+  const rows=getChino();if(!rows.length)return;
+  // Formato Excel: N° Asiento;N° Pase;Fecha;Concepto;Código Cuenta;Importe
+  // Separador ; para que Excel (config. argentina) abra en columnas, coma decimal
+  const h="N\xBA Asiento;N\xBA Pase;Fecha;Concepto;C\xF3digo Cuenta;Importe\n";
+  const b=rows.map(r=>`${r.nA};${r.nP};${fechaExp(r.fecha)};${r.concepto};${r.codigo};${impExp(r.importe)}`).join("\n");
+  const bl=new Blob(["\uFEFF"+h+b],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(bl);
+  a.download=`chino_${slug(empLabel())}_${perCorto(E.mes)}.csv`;a.click();
+}
+
+function expCSVAgrp(){
+  const rows=getChinoAgrupado();if(!rows.length)return;
+  // Mismo formato Excel de 6 columnas, pero el Código Cuenta es el código chino (agrupado)
+  const h="N\xBA Asiento;N\xBA Pase;Fecha;Concepto;C\xF3digo Cuenta;Importe\n";
+  const b=rows.map(r=>`${r.nA};${r.nP};${fechaExp(r.fecha)};${r.concepto};${r.ccodigo};${impExp(r.importe)}`).join("\n");
+  const bl=new Blob(["\uFEFF"+h+b],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(bl);
+  a.download=`chino_agrupado_${slug(empLabel())}_${perCorto(E.mes)}.csv`;a.click();
+}
+
+// ─── EXPORTACIÓN A EXCEL (.xls) ───────────────────────────────────────────────
+// Genera un archivo Excel real (SpreadsheetML) con el formato de la planilla:
+// encabezado naranja con filtros, 6 columnas, fecha d/m/aaaa, importes numéricos
+function xmlEsc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+function buildXLS(filas, nombreHoja){
+  // filas: array de {nA,nP,fecha,concepto,codigo,importe}
+  const nRows=filas.length+1;
+  let xml=`<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="hd">
+   <Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="11"/>
+   <Interior ss:Color="#ED7D31" ss:Pattern="Solid"/>
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FFFFFF"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FFFFFF"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="num"><NumberFormat ss:Format="General"/></Style>
+  <Style ss:ID="txt"/>
+ </Styles>
+ <Worksheet ss:Name="${xmlEsc(nombreHoja)}">
+  <Names><NamedRange ss:Name="_FilterDatabase" ss:RefersTo="='${xmlEsc(nombreHoja)}'!R1C1:R${nRows}C6" ss:Hidden="1"/></Names>
+  <Table>
+   <Column ss:Width="70"/><Column ss:Width="60"/><Column ss:Width="70"/>
+   <Column ss:Width="300"/><Column ss:Width="90"/><Column ss:Width="110"/>
+   <Row ss:Height="18">
+    <Cell ss:StyleID="hd"><Data ss:Type="String">N\xBA Asiento</Data></Cell>
+    <Cell ss:StyleID="hd"><Data ss:Type="String">N\xBA Pase</Data></Cell>
+    <Cell ss:StyleID="hd"><Data ss:Type="String">Fecha</Data></Cell>
+    <Cell ss:StyleID="hd"><Data ss:Type="String">Concepto</Data></Cell>
+    <Cell ss:StyleID="hd"><Data ss:Type="String">C\xF3digo Cuenta</Data></Cell>
+    <Cell ss:StyleID="hd"><Data ss:Type="String">Importe</Data></Cell>
+   </Row>`;
+  filas.forEach(r=>{
+    xml+=`
+   <Row>
+    <Cell ss:StyleID="num"><Data ss:Type="Number">${r.nA}</Data></Cell>
+    <Cell ss:StyleID="num"><Data ss:Type="Number">${r.nP}</Data></Cell>
+    <Cell ss:StyleID="txt"><Data ss:Type="String">${fechaExp(r.fecha)}</Data></Cell>
+    <Cell ss:StyleID="txt"><Data ss:Type="String">${xmlEsc(r.concepto)}</Data></Cell>
+    <Cell ss:StyleID="txt"><Data ss:Type="String">${xmlEsc(r.codigo)}</Data></Cell>
+    <Cell ss:StyleID="num"><Data ss:Type="Number">${r.importe.toFixed(2)}</Data></Cell>
+   </Row>`;
+  });
+  xml+=`
+  </Table>
+  <AutoFilter x:Range="R1C1:R${nRows}C6" xmlns="urn:schemas-microsoft-com:office:excel"/>
+  <x:WorksheetOptions><x:FreezePanes/><x:SplitHorizontal>1</x:SplitHorizontal><x:TopRowBottomPane>1</x:TopRowBottomPane></x:WorksheetOptions>
+ </Worksheet>
+</Workbook>`;
+  return xml;
+}
+
+function dlXLS(xml, nombre){
+  const bl=new Blob([xml],{type:"application/vnd.ms-excel"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(bl);
+  a.download=nombre;a.click();
+}
+
+function expXLS(){
+  const rows=getChino();if(!rows.length)return;
+  const filas=rows.map(r=>({nA:r.nA,nP:r.nP,fecha:r.fecha,concepto:r.concepto,codigo:r.codigo,importe:r.importe}));
+  dlXLS(buildXLS(filas,"Asientos"),`chino_${slug(empLabel())}_${perCorto(E.mes)}.xls`);
+}
+
+function expXLSAgrp(){
+  const rows=getChinoAgrupado();if(!rows.length)return;
+  const filas=rows.map(r=>({nA:r.nA,nP:r.nP,fecha:r.fecha,concepto:r.concepto,codigo:r.ccodigo,importe:r.importe}));
+  dlXLS(buildXLS(filas,"Asientos Agrupados"),`chino_agrupado_${slug(empLabel())}_${perCorto(E.mes)}.xls`);
+}
+
+// ─── MAESTRO ──────────────────────────────────────────────────────────────────
+function gCta(){
+  const n=document.getElementById("nc-n")?.value.trim();
+  const c=document.getElementById("nc-c")?.value.trim()||"XXXXX";
+  const cc=document.getElementById("nc-cc")?.value||"XXXXX";
+  if(!n)return;
+  if(E.ecta){MC=MC.map(m=>m.n===E.ecta?{n,c,cc}:m);E.ecta=null;}
+  else{MC=[...MC,{n,c,cc}];}
+  DB.cuentas=MC;render();
+}
+function eCta(n){E.ecta=n;render();setTimeout(()=>{const m=MC.find(x=>x.n===n);if(!m)return;const ni=document.getElementById("nc-n"),ci=document.getElementById("nc-c"),cci=document.getElementById("nc-cc");if(ni)ni.value=m.n;if(ci)ci.value=m.c;if(cci)cci.value=m.cc||"XXXXX";},10);}
+function dCta(n){
+  const uso=cuentaEnUso(n);
+  if(uso&&!confirm("La cuenta \""+n+"\" está usada en "+uso+" línea(s) de asientos. Si la borrás, esas líneas quedan con una cuenta que ya no existe en el maestro.\n\n¿Seguir?"))return;
+  MC=MC.filter(m=>m.n!==n);DB.cuentas=MC;render();
+}
+function cuentaEnUso(n){
+  let k=0;
+  Object.keys(DB.asientos).forEach(ej=>Object.keys(DB.asientos[ej]||{}).forEach(p=>
+    (DB.asientos[ej][p]||[]).forEach(a=>a.lineas.forEach(l=>{if(l.cuenta===n)k++;}))));
+  return k;
+}
+// Edición en línea del maestro. Renombrar arrastra el cambio a los asientos y
+// saldos de todos los ejercicios; cambiar un código lo refresca en las líneas
+// ya cargadas, salvo las que tengan el código chino pisado a mano.
+function ctaUpd(nombre,campo,v){
+  const m=MC.find(x=>x.n===nombre);if(!m)return;
+  if(campo==="n"){
+    const nuevo=String(v).trim();
+    if(!nuevo||nuevo===nombre)return render();
+    if(MC.some(x=>x.n===nuevo)){alert("Ya existe una cuenta con ese nombre.");return render();}
+    m.n=nuevo;
+    Object.keys(DB.asientos).forEach(ej=>Object.keys(DB.asientos[ej]||{}).forEach(p=>
+      (DB.asientos[ej][p]||[]).forEach(a=>a.lineas.forEach(l=>{if(l.cuenta===nombre)l.cuenta=nuevo;}))));
+    Object.keys(DB.saldos).forEach(ej=>{
+      const t=DB.saldos[ej];
+      if(t&&t[nombre]!==undefined){t[nuevo]=t[nombre];delete t[nombre];}
+    });
+    Object.keys(DB.mapCompras||{}).forEach(k=>{if(DB.mapCompras[k]===nombre)DB.mapCompras[k]=nuevo;});
+  }
+  else if(campo==="c")m.c=String(v).trim()||"XXXXX";
+  else if(campo==="cc")m.cc=v||"XXXXX";
+  DB.cuentas=MC;
+  sincronizarCodigos();
+  render();
+}
+function sincronizarCodigos(){
+  Object.keys(DB.asientos).forEach(ej=>Object.keys(DB.asientos[ej]||{}).forEach(p=>
+    (DB.asientos[ej][p]||[]).forEach(a=>a.lineas.forEach(l=>{
+      if(!l.cuenta)return;
+      const m=MC.find(x=>x.n===l.cuenta);
+      if(!m)return;
+      l.codigo=m.c;
+      if(!l.ccManual)l.ccodigo=m.cc||"XXXXX";
+    }))));
+}
+// Aplica un código chino a varias cuentas de una (ej: todos los planes de pago)
+function ctaMasivo(){
+  const cc=document.getElementById("mas-cc").value;
+  const sel=[...document.querySelectorAll(".cta-chk:checked")].map(x=>x.dataset.n);
+  if(!sel.length){alert("Marcá al menos una cuenta.");return;}
+  sel.forEach(n=>{const m=MC.find(x=>x.n===n);if(m)m.cc=cc;});
+  DB.cuentas=MC;sincronizarCodigos();render();
+}
+function canCta(){E.ecta=null;render();}
+
+// ─── BARRA DE CONTEXTO (empresa / ejercicio / período) ───────────────────────
+function renderCtx(){
+  const el=document.getElementById("ctx");if(!el)return;
+  const ejs=DB.ejercicios.filter(x=>x.emp===E.emp);
+  let h=`<span class="ctx-lb">Empresa</span><select class="ctx-sel" onchange="selEmp(this.value)">`;
+  if(!DB.empresas.length)h+=`<option>(sin empresas)</option>`;
+  DB.empresas.forEach(e=>h+=`<option value="${esc(e.id)}" ${E.emp===e.id?"selected":""}>${esc(e.nombre)}</option>`);
+  h+=`</select>`;
+  h+=`<span class="ctx-lb">Ejercicio</span><select class="ctx-sel" onchange="selEj(this.value)">`;
+  if(!ejs.length)h+=`<option>(sin ejercicios)</option>`;
+  ejs.forEach(e=>h+=`<option value="${esc(e.id)}" ${E.ej===e.id?"selected":""}>${esc(e.nom)} &middot; ${esc(ejRango(e))}</option>`);
+  h+=`</select>`;
+  h+=`<span class="ctx-lb">Mes</span><select class="ctx-sel" onchange="cm(this.value)">`;
+  for(let i=0;i<nPer();i++)h+=`<option value="${i}" ${E.mes===i?"selected":""}>${perLabel(i)}</option>`;
+  h+=`</select>`;
+  el.innerHTML=h;
+  document.title=empLabel()+" \u2014 Contabilidad "+ejLabel();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render(){
+  const app=document.getElementById("app");
+  if(!getEj()&&["carga","chino","mayores","mayorchino","saldos","importar"].indexOf(E.vista)>=0){
+    E.vista="empresas";
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v==="empresas"));
+  }
+  renderCtx();
+  guardarDatos();
+  const mes=perLabel(E.mes);
+
+  if(E.vista==="carga"){
+    const list=getMes();const g=tG();
+    let h=`<div class="toolbar"><h2>Asientos &mdash; ${mes}</h2>`;
+    if(list.length)h+=`<div class="cuadre ${g.ok?"ok":"mal"}">D: ${fmtD(g.d)} | H: ${fmtD(g.h)} ${g.ok?"&#x2713; Cuadra":"&#x2717; No cuadra"}</div>`;
+    const ivaChk=getIvaCheck(E.mes);
+    if(ivaChk.hay)h+=`<div class="cuadre ${ivaChk.ok?"ok":"mal"}" title="I.V.A. Débito Fiscal cargado en Ventas del mes vs Asiento IVA del mes">IVA Déb.: Ventas ${fmtD(ivaChk.vVentas)} | Asiento ${fmtD(ivaChk.vAsiento)} ${ivaChk.ok?"&#x2713; Coincide":"&#x2717; Dif. "+fmtD(Math.abs(ivaChk.diff))}</div>`;
+    h+=`<div style="flex:1"></div>
+      <button class="btn sm" onclick="copM()" ${E.mes===0?"disabled":""}>Copiar mes anterior</button>
+      <div class="drop-wrap"><button class="btn primary sm" onclick="E.drop=!E.drop;render()">+ Nuevo asiento &#9660;</button>`;
+    if(E.drop){
+      h+=`<div class="drop">`;
+      TIPOS.forEach(t=>{const n=(PL[t]||[]).length;h+=`<div class="di" onmousedown="addA('${esc(t)}')"><span class="badge ${n>0?"bl":"gr"}">${n}</span>${esc(t)}</div>`;});
+      h+=`</div>`;
+    }
+    h+=`</div></div>`;
+    if(!list.length)h+=`<div class="empty">Sin asientos en ${mes}.<br><small>Usá "+ Nuevo asiento" y elegí el tipo &mdash; las cuentas se cargan solas.</small></div>`;
+
+    list.forEach((a,ai)=>{
+      recalcDerivados(a,E.mes);
+      const dTot=a.lineas.reduce((s,l)=>s+pn(l.debe)+(l.formula&&l._t==="D"?calcFormula(a,l):0),0);
+      const hTot=a.lineas.reduce((s,l)=>s+pn(l.haber)+(l.formula&&l._t==="H"?calcFormula(a,l):0),0);
+      const cuadra=Math.abs(dTot-hTot)<0.02&&dTot>0;
+
+      h+=`<div class="card"><div class="card-head">
+        <span class="badge bl">#${ai+1}</span>
+        <select class="tipo-sel" onchange="chgT('${a.id}',this.value)">`;
+      TIPOS.forEach(t=>h+=`<option value="${esc(t)}" ${a.tipo===t?"selected":""}>${esc(t)}</option>`);
+      h+=`</select>`;
+      if(dTot>0||hTot>0)h+=`<span class="badge ${cuadra?"gn":"rd"}" style="margin-left:auto">D: ${fmtD(dTot)} | H: ${fmtD(hTot)} ${cuadra?"&#x2713;":"&#x2717;"}</span>`;
+      else h+=`<div style="flex:1"></div>`;
+      h+=`<button class="btn sm outline-v" onclick="togC('${a.id}')">${a.col?"&#9654;":"&#9660;"}</button>
+          <button class="btn sm danger" onclick="delA('${a.id}')">&#x2715;</button>
+        </div>`;
+
+      if(a.tipo==="POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES"&&E.mes>0){
+        const arrastre=saldoCuentaHastaMes("SDO. FAVOR IMP A LOS INGRESOS BRUTOS",E.mes);
+        if(arrastre>0.02){
+          h+=`<div style="padding:6px 14px;background:#eff6ff;border-bottom:1px solid #dbeafe;font-size:11px;color:#1e40af">
+            &#x2139; Saldo a favor de Ingresos Brutos al cierre de ${perLabel(E.mes-1)}: <b>${fmtD(arrastre)}</b> &mdash; agregalo como línea en el <b>Haber</b> (cuenta "SDO. FAVOR IMP A LOS INGRESOS BRUTOS") para tomarlo este mes.
+          </div>`;
+        }
+      }
+
+      if(!a.col){
+        h+=`<table class="lt"><thead><tr>
+          <th style="width:32px"></th>
+          <th>Cuenta</th>
+          <th style="width:72px">Cód.</th>
+          <th style="width:130px">Cód.Chino</th>
+          <th style="width:130px;text-align:right">Debe</th>
+          <th style="width:130px;text-align:right">Haber</th>
+          <th style="width:28px;text-align:center" title="Fórmula automática">&#x192;</th>
+          <th style="width:28px"></th>
+        </tr></thead><tbody>`;
+
+        a.lineas.forEach(l=>{
+          const dv=l.formula?calcFormula(a,l):pn(l.debe);
+          const hv=l.formula?calcFormula(a,l):pn(l.haber);
+          const isD=l._t==="D"||pn(l.debe)>0;
+          const isH=l._t==="H"||pn(l.haber)>0;
+          const cid=l.codigo||"";
+          const ccid=l.ccodigo||"XXXXX";
+          const isAC=E.acOpen&&E.acOpen.aid===a.id&&E.acOpen.lid===l.id;
+          const acItems=isAC?getAC(l.cuenta):[];
+
+          h+=`<tr style="background:${l.formula?"#faf5ff":l.autoSplit!=null?"#f0f9ff":""}">
+            <td><button class="tb ${l.formula?"formula":isD?"d":isH?"h":"n"}"
+              onclick="flpT('${a.id}','${l.id}')"
+              title="Click para cambiar Debe/Haber">
+              ${l.formula?"&#x192;":isD?"D":isH?"H":"&middot;"}
+            </button></td>
+            <td><div class="ac-wrap">
+              <input id="ci_${l.id}" class="ci" value="${esc(l.cuenta)}" placeholder="Cuenta..."
+                oninput="updLSilent('${a.id}','${l.id}','cuenta',this.value);E.acOpen={aid:'${a.id}',lid:'${l.id}'};renderAConly('${l.id}',this.value)"
+                onfocus="E.acOpen={aid:'${a.id}',lid:'${l.id}'};renderAConly('${l.id}',this.value)"
+                onblur="setTimeout(()=>{E.acOpen=null;updLRender('${a.id}','${l.id}','cuenta',document.getElementById('ci_${l.id}')?.value||'');},200)"/>`;
+          if(isAC&&acItems.length){
+            h+=`<div class="ac-list" id="acl_${l.id}">`;
+            acItems.forEach(it=>h+=`<div class="ac-it ${it===l.cuenta?"sel":""}" onmousedown="updLRender('${a.id}','${l.id}','cuenta','${esc(it)}')">${esc(it)}</div>`);
+            h+=`</div>`;
+          }
+          if(l.autoSplit!=null){
+            const esManual=a.manualAuto===l.id;
+            h+=`<div style="margin-top:2px;display:flex;gap:4px;align-items:center">
+              <span class="badge ${esManual?"pu":"cy"}" style="font-size:9px" title="Reparto automático Caja/Deudores">${esManual?"Manual":"Auto "+Math.round(l.autoSplit*100)+"%"}</span>
+              ${a.manualAuto?`<button class="btn sm" style="padding:1px 6px;font-size:9px" onclick="resetAutoSplit('${a.id}')" title="Volver al reparto 20/80 automático">&#8635;</button>`:""}
+            </div>`;
+          }
+          h+=`</div></td>
+            <td style="text-align:center"><span class="badge ${cid==="XXXXX"||!cid?"am":"bl"}">${cid||"&mdash;"}</span></td>`;
+
+          // Selector código chino
+          h+=`<td><select class="cc-sel" onchange="updCC('${a.id}','${l.id}',this.value)" title="Código alternativo (Chino)">`;
+          PLAN_CHINO.filter(p=>p.imp).forEach(p=>{
+            h+=`<option value="${esc(p.c)}" ${ccid===p.c?"selected":""}>${esc(p.c)} - ${esc(p.d)}</option>`;
+          });
+          h+=`</select></td>`;
+
+          // Campos debe/haber
+          if(l.formula&&l._t==="D"){
+            h+=`<td><input class="ii d formula" value="${fmtN(dv)||"auto"}" disabled title="${l.swing?"Calculado (vuelco): solo aparece si genera saldo a favor":"Calculado automáticamente"}"/></td>`;
+            h+=`<td><input class="ii h" value="" disabled/></td>`;
+          } else if(l.formula&&l._t==="H"){
+            h+=`<td><input class="ii d" value="" disabled/></td>`;
+            h+=`<td><input class="ii h formula" value="${fmtN(hv)||"auto"}" disabled title="${l.swing?"Calculado (vuelco): solo aparece si queda monto a pagar":"Calculado automáticamente"}"/></td>`;
+          } else if(l.derivado){
+            h+=`<td><input class="ii d formula" value="${l._t==="D"?fmtN(pn(l.debe)):""}" disabled title="Se calcula solo: importe de la DDJJ menos el crédito fiscal del DTO 814"/></td>`;
+            h+=`<td><input class="ii h formula" value="${l._t==="H"?fmtN(pn(l.haber)):""}" disabled title="Se calcula solo: importe de la DDJJ menos el crédito fiscal del DTO 814"/></td>`;
+          } else {
+            h+=`<td><input id="d_${l.id}" class="ii d" value="${fmtN(pn(l.debe))||""}" placeholder="0,00"
+              oninput="updLSilent('${a.id}','${l.id}','debe',this.value)"
+              onblur="updLRender('${a.id}','${l.id}','debe',this.value)"/></td>`;
+            h+=`<td><input id="h_${l.id}" class="ii h" value="${fmtN(pn(l.haber))||""}" placeholder="0,00"
+              oninput="updLSilent('${a.id}','${l.id}','haber',this.value)"
+              onblur="updLRender('${a.id}','${l.id}','haber',this.value)"/></td>`;
+          }
+          h+=`<td style="text-align:center">
+            <button onclick="togFormula('${a.id}','${l.id}')" title="${l.formula?"Quitar fórmula":"Activar fórmula automática"}"
+              style="background:${l.formula?"#ede9fe":"#f1f5f9"};border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:11px;color:${l.formula?"#5b21b6":"#94a3b8"}">&#x192;</button></td>
+            <td>${a.lineas.length>1?`<button onclick="delL('${a.id}','${l.id}');render()" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:17px;line-height:1">&#x00D7;</button>`:""}</td>
+          </tr>`;
+        });
+        h+=`</tbody></table><div style="padding:7px 12px;border-top:1px solid #f9fafb">
+          <button class="btn sm" onclick="addL('${a.id}');render()">+ Agregar línea</button></div>`;
+      }
+      h+=`</div>`;
+    });
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="chino"){
+    const rows=getChino();
+    let h=`<div class="toolbar"><h2>Formato Chino &mdash; ${mes}</h2>
+      <span class="badge bl">${rows.length} líneas</span>
+      <div style="flex:1"></div>
+      <button class="btn primary sm" onclick="expXLS()" ${!rows.length?"disabled":""}>&#x2B07; Exportar Excel</button>
+      <button class="btn sm" onclick="expCSV()" ${!rows.length?"disabled":""}>CSV</button></div>`;
+    if(!rows.length)h+=`<div class="empty">Sin asientos en ${mes}.</div>`;
+    else{
+      const sD=rows.filter(r=>r.importe>0).reduce((s,r)=>s+r.importe,0);
+      const sH=Math.abs(rows.filter(r=>r.importe<0).reduce((s,r)=>s+r.importe,0));
+      h+=`<div class="card"><table class="ct" style="font-size:12px"><thead><tr>
+        <th style="width:60px">N&ordm; As.</th><th style="width:60px">N&ordm; Pase</th>
+        <th style="width:90px">Fecha</th><th>Concepto</th>
+        <th style="width:80px">Cód.</th><th>Cuenta</th>
+        <th style="width:90px">Cód.Chino</th><th>Cuenta Chino</th>
+        <th style="width:130px;text-align:right">Importe</th></tr></thead><tbody>`;
+      rows.forEach(r=>{
+        h+=`<tr style="${r.esFormula?"background:#faf5ff":""}">
+          <td style="font-weight:700;color:#1a56db">${r.nA}</td>
+          <td style="color:#6b7280">${r.nP}</td>
+          <td style="font-family:monospace">${fechaExp(r.fecha)}</td>
+          <td>${esc(r.concepto)}</td>
+          <td><span class="badge ${r.codigo==="XXXXX"?"am":"bl"}">${r.codigo}</span></td>
+          <td>${esc(r.cuenta)}${r.esFormula?' <span class="badge pu" title="Valor calculado">&#x192;</span>':""}</td>
+          <td><span class="badge ${r.ccodigo==="XXXXX"?"am":"cy"}">${r.ccodigo}</span></td>
+          <td style="color:#0e7490;font-size:11px">${esc(r.ccodigoDesc)}</td>
+          <td style="text-align:right;font-family:monospace;font-weight:600;color:${r.importe>=0?"#059669":"#b45309"}">${r.importe>=0?fmtD(r.importe):"("+fmtD(Math.abs(r.importe))+")"}</td>
+        </tr>`;
+      });
+      h+=`</tbody><tfoot>
+        <tr style="background:#f1f5f9;border-top:2px solid #e2e8f0"><td colspan="8" style="padding:7px 10px;font-weight:700">Total Debe</td><td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:700;color:#059669">${fmtD(sD)}</td></tr>
+        <tr style="background:#f1f5f9"><td colspan="8" style="padding:7px 10px;font-weight:700">Total Haber</td><td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:700;color:#b45309">${fmtD(sH)}</td></tr>
+      </tfoot></table></div>`;
+
+      // Tabla agrupada por código chino
+      const agrp=getChinoAgrupado();
+      const sDa=agrp.filter(r=>r.importe>0).reduce((s,r)=>s+r.importe,0);
+      const sHa=Math.abs(agrp.filter(r=>r.importe<0).reduce((s,r)=>s+r.importe,0));
+      h+=`<div style="margin-top:18px"><div class="toolbar" style="margin-bottom:8px"><h2>Vista Agrupada por Código Chino</h2>
+        <button class="btn sm primary" onclick="expXLSAgrp()" ${!agrp.length?"disabled":""}>&#x2B07; Exportar Excel agrupado</button>
+        <button class="btn sm" onclick="expCSVAgrp()" ${!agrp.length?"disabled":""}>CSV</button></div>`;
+      h+=`<div class="card"><table class="ct" style="font-size:12px"><thead><tr>
+        <th style="width:60px">N&ordm; As.</th><th style="width:60px">N&ordm; Pase</th>
+        <th style="width:90px">Fecha</th><th>Concepto</th>
+        <th style="width:90px">Cód.Chino</th><th>Cuenta Agrupada (Chino)</th><th>Cuentas Origen</th>
+        <th style="width:130px;text-align:right">Importe</th></tr></thead><tbody>`;
+      agrp.forEach(r=>{
+        h+=`<tr>
+          <td style="font-weight:700;color:#1a56db">${r.nA}</td>
+          <td style="color:#6b7280">${r.nP}</td>
+          <td style="font-family:monospace">${fechaExp(r.fecha)}</td>
+          <td>${esc(r.concepto)}</td>
+          <td><span class="badge cy">${r.ccodigo}</span></td>
+          <td style="font-weight:600;color:#0e7490">${esc(r.ccDesc)}</td>
+          <td style="font-size:10px;color:#6b7280">${esc(r.cuentas)}</td>
+          <td style="text-align:right;font-family:monospace;font-weight:600;color:${r.importe>=0?"#059669":"#b45309"}">${r.importe>=0?fmtD(r.importe):"("+fmtD(Math.abs(r.importe))+")"}</td>
+        </tr>`;
+      });
+      h+=`</tbody><tfoot>
+        <tr style="background:#f1f5f9;border-top:2px solid #e2e8f0"><td colspan="7" style="padding:7px 10px;font-weight:700">Total Debe</td><td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:700;color:#059669">${fmtD(sDa)}</td></tr>
+        <tr style="background:#f1f5f9"><td colspan="7" style="padding:7px 10px;font-weight:700">Total Haber</td><td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:700;color:#b45309">${fmtD(sHa)}</td></tr>
+      </tfoot></table></div></div>`;
+    }
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="mayores"){
+    const rows=getMayores();const g=tGTodos();
+    const mesesCargados=Object.keys(E.apm).filter(m=>(E.apm[m]||[]).length>0).map(m=>perLabel(parseInt(m)));
+    let h=`<div class="toolbar"><h2>Mayores &mdash; ${empLabel()} &middot; Ejercicio ${ejLabel()}</h2>
+      <span class="badge bl">${rows.filter(r=>r.debe>0||r.haber>0||SALDOS_INIT[r.cuenta]).length} cuentas</span>
+      ${rows.length?`<span class="badge ${g.ok?"gn":"rd"}">${g.ok?"&#x2713; Cuadra":"&#x2717; No cuadra"}</span>`:""}
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:#6b7280">${mesesCargados.length?"Acumulado: "+mesesCargados.join(", "):"Sin movimientos cargados"}</span>
+      </div>`;
+
+    h+=`<div class="card"><table class="mt">
+      <thead><tr>
+        <th style="text-align:left">Cuenta</th>
+        <th style="text-align:left;width:82px">Código</th>
+        <th style="width:130px">Saldo Ini. D</th>
+        <th style="width:130px">Saldo Ini. H</th>
+        <th style="width:120px">Mov. Debe</th>
+        <th style="width:120px">Mov. Haber</th>
+        <th style="width:130px;background:#dbeafe;color:#1e40af">Saldo Final</th>
+        <th style="width:36px;background:#dbeafe;color:#1e40af">D/H</th>
+      </tr></thead><tbody>`;
+
+    rows.forEach(r=>{
+      const si=SALDOS_INIT[r.cuenta]||{d:0,h:0};
+      const siNet = si.d - si.h;
+      const movNet = r.debe - r.haber;
+      const sfNet = siNet + movNet;
+      const haySaldo = si.d||si.h||r.debe||r.haber;
+      if(!haySaldo)return;
+
+      h+=`<tr>
+        <td style="font-weight:500">${esc(r.cuenta)}</td>
+        <td><span class="badge ${r.codigo==="XXXXX"||!r.codigo?"am":"bl"}">${r.codigo||"&mdash;"}</span></td>
+        <td style="color:${si.d>0?"#059669":"#9ca3af"}">${si.d>0?fmtD(si.d):"&mdash;"}</td>
+        <td style="color:${si.h>0?"#b45309":"#9ca3af"}">${si.h>0?fmtD(si.h):"&mdash;"}</td>
+        <td style="color:${r.debe>0?"#059669":"#9ca3af"}">${r.debe>0?fmtD(r.debe):"&mdash;"}</td>
+        <td style="color:${r.haber>0?"#b45309":"#9ca3af"}">${r.haber>0?fmtD(r.haber):"&mdash;"}</td>
+        <td style="font-weight:700;background:#eff6ff;color:${sfNet===0?"#6b7280":sfNet>0?"#059669":"#b45309"}">${fmtD(Math.abs(sfNet))}</td>
+        <td style="background:#eff6ff;text-align:center">${sfNet===0?'<span class="badge gr">&mdash;</span>':sfNet>0?'<span class="badge gn">D</span>':'<span class="badge am">H</span>'}</td>
+      </tr>`;
+    });
+
+    const totSiD=rows.reduce((s,r)=>{const si=SALDOS_INIT[r.cuenta]||{d:0,h:0};return s+si.d;},0);
+    const totSiH=rows.reduce((s,r)=>{const si=SALDOS_INIT[r.cuenta]||{d:0,h:0};return s+si.h;},0);
+    const totMD=rows.reduce((s,r)=>s+r.debe,0);
+    const totMH=rows.reduce((s,r)=>s+r.haber,0);
+    const totSfD=rows.reduce((s,r)=>{const si=SALDOS_INIT[r.cuenta]||{d:0,h:0};const sf=(si.d-si.h)+(r.debe-r.haber);return s+(sf>0?sf:0);},0);
+    const totSfH=rows.reduce((s,r)=>{const si=SALDOS_INIT[r.cuenta]||{d:0,h:0};const sf=(si.d-si.h)+(r.debe-r.haber);return s+(sf<0?-sf:0);},0);
+
+    h+=`</tbody><tfoot>
+      <tr class="tot-row">
+        <td colspan="2" style="padding:7px 10px">TOTAL</td>
+        <td>${fmtD(totSiD)}</td><td>${fmtD(totSiH)}</td>
+        <td>${fmtD(totMD)}</td><td>${fmtD(totMH)}</td>
+        <td style="background:#dbeafe">${fmtD(totSfD)}</td>
+        <td style="background:#dbeafe">${fmtD(totSfH)}</td>
+      </tr>
+    </tfoot></table></div>`;
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="mayorchino"){
+    const rows=getMayorChino();const g=tGTodos();
+    const mesesCargados=Object.keys(E.apm).filter(m=>(E.apm[m]||[]).length>0).map(m=>perLabel(parseInt(m)));
+    let h=`<div class="toolbar"><h2>Mayor Chino &mdash; ${empLabel()} &middot; Ejercicio ${ejLabel()}</h2>
+      <span class="badge cy">${rows.length} cuentas agrupadas</span>
+      ${g.ok?`<span class="badge gn">&#x2713; Cuadra</span>`:`<span class="badge rd">&#x2717; No cuadra</span>`}
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:#6b7280">${mesesCargados.length?"Acumulado: "+mesesCargados.join(", "):"Sin movimientos cargados"}</span></div>`;
+
+    if(!rows.length){h+=`<div class="empty">Sin movimientos cargados en el ejercicio.</div>`;app.innerHTML=h;return;}
+
+    h+=`<div class="card"><table class="mt">
+      <thead><tr>
+        <th style="text-align:left;width:100px">Cód.Chino</th>
+        <th style="text-align:left">Cuenta Agrupada</th>
+        <th style="width:150px">Mov. Debe</th>
+        <th style="width:150px">Mov. Haber</th>
+        <th style="width:150px;background:#cffafe;color:#0e7490">Saldo Mov.</th>
+        <th style="width:50px;background:#cffafe;color:#0e7490">D/H</th>
+      </tr></thead><tbody>`;
+
+    rows.forEach(r=>{
+      const sfNet=r.debe-r.haber;
+      h+=`<tr>
+        <td><span class="badge cy">${r.cc}</span></td>
+        <td style="font-weight:600;color:#0e7490">${esc(r.desc)}</td>
+        <td style="color:${r.debe>0?"#059669":"#9ca3af"}">${r.debe>0?fmtD(r.debe):"&mdash;"}</td>
+        <td style="color:${r.haber>0?"#b45309":"#9ca3af"}">${r.haber>0?fmtD(r.haber):"&mdash;"}</td>
+        <td style="font-weight:700;background:#ecfeff;color:${sfNet===0?"#6b7280":sfNet>0?"#059669":"#b45309"}">${fmtD(Math.abs(sfNet))}</td>
+        <td style="background:#ecfeff;text-align:center">${sfNet===0?'<span class="badge gr">&mdash;</span>':sfNet>0?'<span class="badge gn">D</span>':'<span class="badge am">H</span>'}</td>
+      </tr>`;
+    });
+
+    const totD=rows.reduce((s,r)=>s+r.debe,0);
+    const totH=rows.reduce((s,r)=>s+r.haber,0);
+    const totSD=rows.reduce((s,r)=>{const sf=r.debe-r.haber;return s+(sf>0?sf:0);},0);
+    const totSH=rows.reduce((s,r)=>{const sf=r.debe-r.haber;return s+(sf<0?-sf:0);},0);
+
+    h+=`</tbody><tfoot>
+      <tr class="tot-row">
+        <td colspan="2" style="padding:7px 10px">TOTAL</td>
+        <td>${fmtD(totD)}</td><td>${fmtD(totH)}</td>
+        <td style="background:#cffafe">${fmtD(totSD)}</td>
+        <td style="background:#cffafe">${fmtD(totSH)}</td>
+      </tr>
+    </tfoot></table></div>`;
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="saldos"){
+    const q=E.siSearch||"";
+    const cuentas=Object.keys(SALDOS_INIT).filter(c=>!q||c.toLowerCase().includes(q.toLowerCase())).sort();
+    let h=`<div class="toolbar"><h2>Saldos Iniciales &mdash; ${empLabel()} &middot; Ejercicio ${ejLabel()}</h2>
+      <span class="badge bl">${Object.keys(SALDOS_INIT).length} cuentas</span>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:#6b7280">Saldos del balance de apertura (manuales)</span></div>`;
+
+    // Arrastre desde el ejercicio anterior
+    const ejAct=getEj();
+    const prevEj=ejAct?ejAnterior(ejAct):null;
+    h+=`<div class="card" style="padding:14px;margin-bottom:12px;background:#f8fafc">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">Traer saldos del ejercicio anterior</div>`;
+    if(prevEj){
+      h+=`<div class="mini" style="margin-bottom:8px">Toma los saldos de cierre de <b>${esc(prevEj.nom)}</b> (${esc(ejRango(prevEj))}) &mdash; saldos iniciales más movimientos de todos sus meses &mdash; y los carga acá como apertura.</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px">
+          <input type="checkbox" id="si-refundir" checked> Refundir cuentas de resultado en Resultados No Asignados
+        </label>
+        <button class="btn primary sm" onclick="arrastrarSaldos()">&#8594; Traer saldos</button>
+      </div>`;
+    }else{
+      h+=`<div class="mini">No hay un ejercicio anterior cargado para ${esc(empLabel())}. Cuando exista, desde acá se traen los saldos de cierre como apertura de este.</div>`;
+    }
+    h+=`</div>`;
+
+    // Agregar nueva cuenta
+    h+=`<div class="card" style="padding:14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Agregar cuenta con saldo inicial</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="ac-wrap" style="flex:1;min-width:250px">
+          <input id="si-nc" class="fi" style="width:100%" placeholder="Nombre de cuenta..."
+            oninput="renderSiAC(this.value)" onfocus="renderSiAC(this.value)"
+            onblur="setTimeout(()=>{const el=document.getElementById('si-ac-list');if(el)el.remove();},200)">
+          <div id="si-ac-list"></div>
+        </div>
+        <button class="btn primary sm" onclick="siAdd()">+ Agregar</button>
+      </div></div>`;
+
+    h+=`<input class="si" placeholder="Buscar cuenta..." value="${esc(q)}" oninput="E.siSearch=this.value;render()">`;
+
+    h+=`<div class="card"><table class="sit">
+      <thead><tr>
+        <th style="text-align:left">Cuenta</th>
+        <th style="width:160px;text-align:right">Saldo Ini. Debe</th>
+        <th style="width:160px;text-align:right">Saldo Ini. Haber</th>
+        <th style="width:80px"></th>
+      </tr></thead><tbody>`;
+
+    cuentas.forEach(cta=>{
+      const si=SALDOS_INIT[cta];
+      h+=`<tr>
+        <td style="font-weight:500">${esc(cta)}</td>
+        <td style="text-align:right">
+          <input class="si2" value="${si.d>0?fmtN(si.d):""}" placeholder="0,00" style="color:#059669"
+            oninput="siUpdSilent('${esc(cta)}','d',this.value)"
+            onblur="siUpdSilent('${esc(cta)}','d',this.value);render()">
+        </td>
+        <td style="text-align:right">
+          <input class="si2" value="${si.h>0?fmtN(si.h):""}" placeholder="0,00" style="color:#b45309"
+            oninput="siUpdSilent('${esc(cta)}','h',this.value)"
+            onblur="siUpdSilent('${esc(cta)}','h',this.value);render()">
+        </td>
+        <td style="text-align:right;padding-right:10px">
+          <button class="btn sm danger" onclick="siDel('${esc(cta)}')">&#x2715;</button>
+        </td>
+      </tr>`;
+    });
+
+    // Totales
+    const totD=Object.values(SALDOS_INIT).reduce((s,v)=>s+v.d,0);
+    const totH=Object.values(SALDOS_INIT).reduce((s,v)=>s+v.h,0);
+    const difOk=Math.abs(totD-totH)<0.02;
+    h+=`</tbody><tfoot>
+      <tr class="tot-row">
+        <td style="padding:8px 10px">TOTAL SALDOS INICIALES</td>
+        <td style="padding:8px 10px;text-align:right;color:#059669">${fmtD(totD)}</td>
+        <td style="padding:8px 10px;text-align:right;color:#b45309">${fmtD(totH)}</td>
+        <td style="padding:8px 10px;text-align:center"><span class="badge ${difOk?"gn":"rd"}">${difOk?"&#x2713; Cuadra":"&#x2717; Dif: "+fmtD(Math.abs(totD-totH))}</span></td>
+      </tr>
+    </tfoot></table></div>`;
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="cuentas"){
+    const q=E.bq||"";
+    const fil=[...MC].filter(m=>!q||m.n.toLowerCase().indexOf(q.toLowerCase())>=0||String(m.c).indexOf(q)>=0||String(m.cc||"").indexOf(q)>=0)
+      .sort((a,b)=>a.n.localeCompare(b.n));
+    const sinC=MC.filter(m=>m.c==="XXXXX").length;
+    const sinCC=MC.filter(m=>!m.cc||m.cc==="XXXXX").length;
+    const opcCC=cur=>{
+      let o="";
+      let hay=false;
+      PLAN_CHINO.filter(p=>p.imp).forEach(p=>{
+        if(p.c===cur)hay=true;
+        o+=`<option value="${esc(p.c)}" ${cur===p.c?"selected":""}>${esc(p.c)} - ${esc(p.d)}</option>`;
+      });
+      if(!hay&&cur)o=`<option value="${esc(cur)}" selected>${esc(cur)} - (fuera del plan)</option>`+o;
+      return o;
+    };
+    let h=`<div class="toolbar"><h2>Maestro de Cuentas</h2>
+      <span class="mini">compartido por todas las empresas</span>
+      <span class="badge bl">${MC.length} cuentas</span>
+      ${sinC?`<span class="badge am">${sinC} sin código propio</span>`:""}
+      ${sinCC?`<span class="badge am">${sinCC} sin código chino</span>`:""}</div>`;
+
+    h+=`<div class="card" style="padding:14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Nueva cuenta</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="nc-n" class="fi" style="flex:1;min-width:200px" placeholder="Nombre de cuenta">
+        <input id="nc-c" class="fi" style="width:130px" placeholder="Código propio">
+        <select id="nc-cc" class="fi" style="min-width:240px">${opcCC("XXXXX")}</select>
+        <button class="btn primary sm" onclick="gCta()">+ Agregar</button>
+      </div>
+      <div class="mini" style="margin-top:6px">En la tabla de abajo se edita todo directo: nombre, código propio y código chino. Varias cuentas propias pueden apuntar al mismo código chino &mdash; así se agrupan en el Formato Chino y en el Mayor Chino.</div>
+    </div>`;
+
+    h+=`<div class="card" style="padding:12px 14px;margin-bottom:12px;background:#f8fafc">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px">Asignar un código chino a varias cuentas de una vez</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="mas-cc" class="fi" style="min-width:280px">${opcCC("")}</select>
+        <button class="btn sm" onclick="ctaMasivo()">Aplicar a las marcadas</button>
+        <span class="mini">Marcá las casillas de la izquierda y elegí el código.</span>
+      </div></div>`;
+
+    h+=`<input class="si" placeholder="Buscar por nombre o por cualquiera de los dos códigos..." value="${esc(q)}" oninput="E.bq=this.value;render()">`;
+    h+=`<div class="card"><table class="ct"><thead><tr>
+      <th style="width:28px"></th><th>Nombre</th><th style="width:120px">Código propio</th>
+      <th style="width:300px">Código chino</th><th style="width:70px">Uso</th><th style="width:40px"></th>
+    </tr></thead><tbody>`;
+    fil.forEach(m=>{
+      const cc=m.cc||"XXXXX";
+      const uso=cuentaEnUso(m.n);
+      h+=`<tr>
+        <td style="text-align:center"><input type="checkbox" class="cta-chk" data-n="${esc(m.n)}"></td>
+        <td><input class="fi" style="width:100%;font-weight:500" value="${esc(m.n)}" onblur="ctaUpd('${esc(m.n)}','n',this.value)"></td>
+        <td><input class="fi" style="width:100%;font-family:monospace;${m.c==="XXXXX"?"background:#fef3c7":""}" value="${esc(m.c)}" onblur="ctaUpd('${esc(m.n)}','c',this.value)"></td>
+        <td><select class="fi" style="width:100%;${cc==="XXXXX"?"background:#fef3c7":""}" onchange="ctaUpd('${esc(m.n)}','cc',this.value)">${opcCC(cc)}</select></td>
+        <td><span class="badge ${uso?"bl":"gr"}">${uso}</span></td>
+        <td style="text-align:right"><button class="btn sm danger" onclick="dCta('${esc(m.n)}')">&#x2715;</button></td>
+      </tr>`;
+    });
+    if(!fil.length)h+=`<tr><td colspan="6" class="mini" style="padding:16px;text-align:center">No hay cuentas que coincidan con la búsqueda.</td></tr>`;
+    h+=`</tbody></table></div>`;
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="empresas"){
+    let h=`<div class="toolbar"><h2>Empresas y Ejercicios</h2>
+      <span class="badge bl">${DB.empresas.length} empresas</span>
+      <span class="badge cy">${DB.ejercicios.length} ejercicios</span></div>`;
+
+    h+=`<div class="card" style="padding:14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Nueva empresa</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="emp-n" class="fi" style="flex:1;min-width:220px" placeholder="Razón social">
+        <input id="emp-c" class="fi" style="width:170px" placeholder="CUIT (opcional)">
+        <button class="btn primary sm" onclick="empAdd()">+ Agregar</button>
+      </div></div>`;
+
+    h+=`<div class="card"><table class="emp"><thead><tr>
+      <th>Empresa</th><th style="width:170px">CUIT</th><th style="width:110px">Ejercicios</th><th style="width:80px"></th>
+    </tr></thead><tbody>`;
+    DB.empresas.forEach(e=>{
+      const n=DB.ejercicios.filter(x=>x.emp===e.id).length;
+      h+=`<tr>
+        <td><input class="fi" style="width:100%;font-weight:600" value="${esc(e.nombre)}" onblur="empUpd('${e.id}','nombre',this.value)"></td>
+        <td><input class="fi" style="width:100%" value="${esc(e.cuit||"")}" placeholder="&mdash;" onblur="empUpd('${e.id}','cuit',this.value)"></td>
+        <td><span class="badge ${n?"bl":"gr"}">${n}</span></td>
+        <td style="text-align:right"><button class="btn sm danger" onclick="empDel('${e.id}')">&#x2715;</button></td>
+      </tr>`;
+    });
+    h+=`</tbody></table></div>`;
+
+    h+=`<div class="card" style="padding:14px;margin:12px 0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Nuevo ejercicio</div>
+      <div class="mini" style="margin-bottom:10px">El ejercicio no tiene que ser año calendario: se define por el mes en que arranca y cuántos meses dura.</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div><div class="mini">Empresa</div>
+          <select id="ej-emp" class="fi" style="min-width:200px">
+            ${DB.empresas.map(e=>`<option value="${esc(e.id)}" ${E.emp===e.id?"selected":""}>${esc(e.nombre)}</option>`).join("")}
+          </select></div>
+        <div><div class="mini">Nombre</div>
+          <input id="ej-nom" class="fi" style="width:150px" placeholder="2027"></div>
+        <div><div class="mini">Mes de inicio</div>
+          <input id="ej-ini" class="fi" type="month" style="width:160px"></div>
+        <div><div class="mini">Meses</div>
+          <input id="ej-meses" class="fi" type="number" min="1" max="24" value="12" style="width:80px"></div>
+        <button class="btn primary sm" onclick="ejAdd()">+ Agregar</button>
+      </div></div>`;
+
+    h+=`<div class="card"><table class="emp"><thead><tr>
+      <th style="width:180px">Empresa</th><th style="width:150px">Ejercicio</th>
+      <th style="width:160px">Inicio</th><th style="width:80px">Meses</th>
+      <th style="width:150px">Período</th><th style="width:90px">Asientos</th><th style="width:130px"></th>
+    </tr></thead><tbody>`;
+    const ordenados=[...DB.ejercicios].sort((a,b)=>a.emp===b.emp?String(a.ini).localeCompare(String(b.ini)):String(a.emp).localeCompare(String(b.emp)));
+    ordenados.forEach(e=>{
+      const em=getEmp(e.emp);
+      const nAs=Object.values(DB.asientos[e.id]||{}).reduce((a,b)=>a+b.length,0);
+      const act=E.ej===e.id;
+      h+=`<tr style="${act?"background:#eff6ff":""}">
+        <td>${esc(em?em.nombre:"(borrada)")}</td>
+        <td><input class="fi" style="width:100%;font-weight:600" value="${esc(e.nom)}" onblur="ejUpd('${e.id}','nom',this.value)"></td>
+        <td><input class="fi" type="month" style="width:100%" value="${esc(e.ini)}" onchange="ejUpd('${e.id}','ini',this.value)"></td>
+        <td><input class="fi" type="number" min="1" max="24" style="width:100%" value="${e.meses||12}" onchange="ejUpd('${e.id}','meses',this.value)"></td>
+        <td class="mini">${esc(ejRango(e))}</td>
+        <td><span class="badge ${nAs?"bl":"gr"}">${nAs}</span></td>
+        <td style="text-align:right;white-space:nowrap">
+          ${act?`<span class="badge gn">Activo</span>`:`<button class="btn sm" onclick="selEj('${e.id}')">Abrir</button>`}
+          <button class="btn sm danger" onclick="ejDel('${e.id}')">&#x2715;</button>
+        </td></tr>`;
+    });
+    if(!ordenados.length)h+=`<tr><td colspan="7" class="mini" style="padding:16px;text-align:center">Todavía no hay ejercicios cargados.</td></tr>`;
+    h+=`</tbody></table></div>`;
+
+    h+=`<div class="card" style="padding:14px;margin-top:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Copias de respaldo</div>
+      <div class="mini" style="margin-bottom:10px">Los datos se guardan solos en la nube y se ven desde cualquier máquina. La copia igual conviene: es tu respaldo si alguien borra algo por error.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn primary sm" onclick="expBackup()">&#x2B07; Exportar copia (.json)</button>
+        <label class="btn sm" style="margin:0">Importar copia<input type="file" accept=".json" style="display:none" onchange="impBackup(this)"></label>
+        <div style="flex:1"></div>
+        <button class="btn sm danger" onclick="borrarTodo()">Borrar todo y empezar de cero</button>
+      </div></div>`;
+
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="instructivo"){
+    const q=(E.instQ||"").toLowerCase();
+    const plano=x=>(x.t+" "+x.o+" "+x.p.join(" ")+" "+(x.x||"")).replace(/<[^>]*>/g,"").toLowerCase();
+    const items=INSTRUCTIVO.map((x,i)=>({x,i})).filter(({x})=>!q||plano(x).includes(q));
+    let h=`<div class="toolbar"><h2>Instructivo de carga</h2>
+      <span class="badge bl">${INSTRUCTIVO.length} tipos de asiento</span>
+      <div style="flex:1"></div>
+      <button class="btn sm" onclick="instTodos(true)">Abrir todo</button>
+      <button class="btn sm" onclick="instTodos(false)">Cerrar todo</button></div>`;
+    h+=`<input class="si" placeholder="Buscar por cuenta, concepto o tipo de asiento..." value="${esc(E.instQ||"")}" oninput="E.instQ=this.value;render()">`;
+
+    // Bloque general de convenciones de la pantalla de carga
+    const genAb=!!E.instOpen.gen;
+    h+=`<div class="card"><div class="card-head" style="cursor:pointer" onclick="togInst('gen')">
+      <span class="badge pu">General</span>
+      <span style="font-weight:700;font-size:13px">Cómo funciona la pantalla de Asientos</span>
+      <div style="flex:1"></div>
+      <button class="btn sm outline-v">${genAb?"&#9660;":"&#9654;"}</button></div>`;
+    if(genAb){
+      h+=`<div style="padding:12px 16px">`;
+      INST_GENERAL.forEach(g=>{
+        h+=`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#111;margin-bottom:2px">${esc(g.tit)}</div>
+          <div style="font-size:12px;color:#374151;line-height:1.5">${g.txt}</div></div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+
+    if(!items.length)h+=`<div class="empty">No hay resultados para «${esc(E.instQ)}».</div>`;
+
+    items.forEach(({x,i})=>{
+      const k="i"+i;const ab=!!E.instOpen[k];
+      h+=`<div class="card"><div class="card-head" style="cursor:pointer" onclick="togInst('${k}')">
+        <span class="badge bl">${i+1}</span>
+        <span style="font-weight:700;font-size:12px;color:#111">${esc(x.t)}</span>
+        <div style="flex:1"></div>
+        <button class="btn sm outline-v">${ab?"&#9660;":"&#9654;"}</button></div>`;
+      if(ab){
+        h+=`<div style="padding:12px 16px">
+          <div style="font-size:11px;text-transform:uppercase;font-weight:700;color:#64748b;margin-bottom:3px">De dónde sale</div>
+          <div style="font-size:12px;color:#374151;margin-bottom:12px">${x.o}</div>
+          <div style="font-size:11px;text-transform:uppercase;font-weight:700;color:#64748b;margin-bottom:5px">Cómo se carga</div>
+          <ol style="margin:0 0 12px 18px;padding:0">`;
+        x.p.forEach(s=>h+=`<li style="font-size:12px;color:#374151;line-height:1.6;margin-bottom:4px">${s}</li>`);
+        h+=`</ol>`;
+        if(x.x){
+          h+=`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:8px 11px;font-size:12px;color:#92400e;line-height:1.5">
+            <b>&#x26A0; Ojo:</b> ${x.x}</div>`;
+        }
+        h+=`</div>`;
+      }
+      h+=`</div>`;
+    });
+    app.innerHTML=h;
+  }
+
+  else if(E.vista==="importar"){
+    const sub=E.imp.sub||"banco";
+    let h=`<div class="toolbar"><h2>Importar</h2>
+      <span class="mini">${esc(empLabel())} &middot; ejercicio ${esc(ejLabel())} (${esc(getEj()?ejRango(getEj()):"")})</span></div>`;
+    h+=`<div class="subtabs">`;
+    IMP_SUBS.forEach(s=>h+=`<button class="subtab ${sub===s.k?"on":""}" onclick="impSub('${s.k}')">${esc(s.l)}</button>`);
+    h+=`</div>`;
+
+    const caja=(titulo,ayuda,acepta,handler,extra)=>`
+      <div class="card" style="padding:16px;margin-bottom:12px">
+        ${extra||""}
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px">${titulo}</div>
+        <div class="mini" style="margin-bottom:10px;line-height:1.5">${ayuda}</div>
+        <input type="file" accept="${acepta}" onchange="${handler}(this)">
+        ${E.imp.archivo?`<span class="badge bl" style="margin-left:8px">${esc(E.imp.archivo)}</span>`:""}
+      </div>`;
+
+    if(sub==="banco"){
+      let bh=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">1. Elegí el banco</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">`;
+      Object.keys(BANCOS_IMPORT).forEach(k=>bh+=`<button class="btn ${E.imp.bank===k?"primary":""} sm" onclick="impSetBank('${k}')">${esc(BANCOS_IMPORT[k].label)}</button>`);
+      bh+=`</div>`;
+      h+=caja("2. Subí el Excel de movimientos",
+        "Columnas esperadas: <b>mes</b> (fecha del movimiento), <b>cuenta</b> (nombre exacto del Plan de Cuentas) e <b>Importe Pesos</b>. Los movimientos de una misma cuenta y mes se netean entre sí: si el neto queda positivo va al asiento de Ingresos, si queda negativo al de Egresos. La cuenta del banco se calcula sola por diferencia.",
+        ".xlsx,.xls","impArchivoBanco",bh);
+    }
+    else if(sub==="compras"){
+      h+=caja("Subí el resumen de compras",
+        "Columnas esperadas: <b>DDJJ</b> o <b>Fecha</b>, <b>Neto Gravado</b>, <b>No Gravado</b>, <b>Exento</b>, <b>IVA</b>, <b>Total</b> y <b>CUENTA</b>. Agrupa por mes y por cuenta: el neto va al Debe de la cuenta de gasto, el IVA a Crédito Fiscal, y Proveedores queda como línea de cierre. La parte pagada al contado la cargás vos en Caja.",
+        ".xlsx,.xls","impArchivoCompras");
+      if(E.imp.raw&&E.imp.raw.origen==="compras"){
+        h+=`<div class="card" style="padding:14px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">Equivalencia de cuentas</div>
+          <div class="mini" style="margin-bottom:10px">Cómo se imputa cada valor de la columna CUENTA del Excel. Se guarda, así que esto se hace una sola vez.</div>
+          <table class="emp"><thead><tr><th>En el Excel</th><th style="width:340px">Se imputa a</th></tr></thead><tbody>`;
+        E.imp.raw.detectadas.forEach(c=>{
+          const dest=mapCompra(c);
+          h+=`<tr><td>${esc(c)}</td><td>
+            <select class="fi" style="width:100%" onchange="mapCompraSet('${esc(c)}',this.value)">
+              <option value="" ${dest===""?"selected":""}>&mdash; sin asignar (no se importa) &mdash;</option>
+              <option value="${EXCLUIR}" ${dest===EXCLUIR?"selected":""}>Excluir</option>
+              ${MC.map(m=>`<option value="${esc(m.n)}" ${dest===m.n?"selected":""}>${esc(m.n)}</option>`).join("")}
+            </select></td></tr>`;
+        });
+        h+=`</tbody></table></div>`;
+      }
+    }
+    else if(sub==="iibb"){
+      h+=caja("Subí la DDJJ de Ingresos Brutos (PDF)",
+        "Del PDF de la DGR San Juan toma el <b>período</b>, el <b>Total Impuesto Determinado</b> y el <b>Total Retenciones y Percepciones</b>. El vuelco entre «a pagar» y «saldo a favor» lo resuelve la fórmula del asiento. También cruza el saldo a favor del mes anterior contra el que viene arrastrando el sistema.",
+        ".pdf","impArchivoIIBB");
+    }
+    else if(sub==="iva"){
+      h+=caja("Subí la DDJJ de IVA (PDF F.2051)",
+        "Toma el <b>débito fiscal</b>, el <b>crédito fiscal</b> y el <b>total de retenciones y percepciones</b>. Como el crédito fiscal de la DDJJ incluye el DTO 814, se le resta el 814 que tengas cargado en el asiento de sueldos de ese mes, y queda vinculado: si después cambiás el 814, el crédito fiscal se ajusta solo.",
+        ".pdf","impArchivoIVA");
+    }
+    else if(sub==="f931"){
+      h+=caja("Subí el F.931 (PDF)",
+        "De la sección <b>Montos que se ingresan</b> suma las contribuciones patronales (códigos 351, 352, 312, 028, 360, 270 y 935) y los aportes retenidos al personal (301 y 302). Carga Cargas Sociales al Debe y Cargas Sociales a Pagar al Haber.",
+        ".pdf","impArchivo931");
+    }
+    else if(sub==="reten"){
+      let rh=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">1. Qué retención es</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">`;
+      Object.keys(RETEN_TIPOS).forEach(k=>rh+=`<button class="btn ${(E.imp.reten||"GANANCIAS")===k?"primary":""} sm" onclick="impSetReten('${k}')">${esc(RETEN_TIPOS[k].label)}</button>`);
+      rh+=`</div>`;
+      h+=caja("2. Subí el Excel de retenciones sufridas",
+        "Columnas esperadas: una de <b>Fecha</b> y una de <b>Importe</b>; si hay una de <b>Operación</b> o <b>Descripción</b> se toman solo las retenciones y se dejan afuera las percepciones. Totaliza por mes y carga la línea correspondiente del asiento de cobro de ventas en cuenta corriente.",
+        ".xlsx,.xls","impArchivoReten",rh);
+    }
+
+    if(E.imp.err){
+      h+=`<div class="card" style="padding:12px 16px;margin-bottom:12px;background:#fee2e2;border-color:#fca5a5">
+        <div style="font-size:12px;font-weight:700;color:#991b1b">&#x2717; ${esc(E.imp.err)}</div></div>`;
+    }
+    if(E.imp.avisos&&E.imp.avisos.length){
+      h+=`<div class="card" style="padding:12px 16px;margin-bottom:12px;background:#fef3c7;border-color:#fde68a">
+        ${E.imp.avisos.map(a=>`<div style="font-size:12px;color:#92400e;margin-bottom:3px">&#x26A0; ${a}</div>`).join("")}</div>`;
+    }
+
+    const p=E.imp.prop;
+    if(p){
+      if(!p.items.length){
+        h+=`<div class="empty">El archivo se leyó pero no quedó nada para importar en este ejercicio.</div>`;
+      }else{
+        h+=`<div class="toolbar"><h2 style="font-size:14px">Revisá y confirmá</h2>
+          <span class="badge bl">${p.items.length} asiento(s)</span>
+          <div style="flex:1"></div>
+          <button class="btn sm" onclick="impCancelar()">Cancelar</button>
+          <button class="btn primary sm" onclick="impConfirmar()">&#x2713; Confirmar e importar</button></div>`;
+        p.items.forEach((it,idx)=>{
+          const existe=impExiste(it.per,it.tipo);
+          const acc=E.imp.acc[idx]||(existe?(it.patch?"reemplazar":"reemplazar"):"agregar");
+          h+=`<div class="card"><div class="card-head">
+            <span class="badge bl">${esc(perLabel(it.per))}</span>
+            <span style="font-size:12px;font-weight:600">${esc(it.tipo)}</span>
+            <div style="flex:1"></div>`;
+          if(existe){
+            const op=(v,l)=>`<label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:8px">
+              <input type="radio" name="acc${idx}" ${acc===v?"checked":""} onchange="impAcc(${idx},'${v}')"> ${l}</label>`;
+            h+=`<span class="badge am">Ya existe</span>`+
+               op("reemplazar",it.patch?"Reemplazar importe":"Reemplazar")+
+               op(it.patch?"sumar":"agregar",it.patch?"Sumar":"Agregar otro")+
+               op("omitir","Omitir");
+          }else h+=`<span class="badge gn">Nuevo</span>`;
+          h+=`</div>`;
+          if(it.nota)h+=`<div style="padding:6px 14px;background:#eff6ff;border-bottom:1px solid #dbeafe;font-size:11px;color:#1e40af">${it.nota}</div>`;
+          h+=`<table class="ct" style="font-size:12px"><thead><tr>
+            <th style="width:40px">D/H</th><th>Cuenta</th><th style="width:160px;text-align:right">Importe</th>
+          </tr></thead><tbody>`;
+          if(it.patch){
+            h+=`<tr><td><span class="badge gn">${it.patch.t}</span></td>
+              <td>${esc(it.patch.cuenta)}</td>
+              <td style="text-align:right;font-family:monospace">${fmtD(it.patch.monto)}</td></tr>`;
+          }else{
+            const ks=Object.keys(it.valores);
+            ks.sort((a,b)=>{const la=a.slice(a.lastIndexOf("|")+1),lb=b.slice(b.lastIndexOf("|")+1);return la===lb?a.localeCompare(b):(la==="D"?-1:1);});
+            ks.forEach(k=>{
+              const i=k.lastIndexOf("|"),c=k.slice(0,i),t=k.slice(i+1);
+              h+=`<tr><td><span class="badge ${t==="D"?"gn":"am"}">${t}</span></td>
+                <td>${esc(c)}${cod(c)?"":' <span class="badge am">sin código</span>'}</td>
+                <td style="text-align:right;font-family:monospace;color:${t==="D"?"#059669":"#b45309"}">${fmtD(it.valores[k])}</td></tr>`;
+            });
+            const sd=ks.filter(k=>k.endsWith("|D")).reduce((s,k)=>s+it.valores[k],0);
+            const sh=ks.filter(k=>k.endsWith("|H")).reduce((s,k)=>s+it.valores[k],0);
+            h+=`<tr style="background:#f1f5f9;font-weight:700"><td></td>
+              <td>Línea de cierre (se calcula sola)</td>
+              <td style="text-align:right;font-family:monospace">${fmtD(Math.abs(sd-sh))}</td></tr>`;
+          }
+          h+=`</tbody></table></div>`;
+        });
+      }
+    }
+    app.innerHTML=h;
+  }
+
+}
+
+// Render parcial del autocomplete de cuenta
+function renderAConly(lid, q){
+  const wrap=document.querySelector(`#ci_${lid}`)?.parentElement;
+  if(!wrap)return;
+  let existing=wrap.querySelector(".ac-list");
+  const items=getAC(q);
+  if(!items.length){if(existing)existing.remove();return;}
+  if(!existing){existing=document.createElement("div");existing.className="ac-list";wrap.appendChild(existing);}
+  existing.innerHTML=items.map(it=>`<div class="ac-it" onmousedown="updLRender('${E.acOpen?.aid}','${lid}','cuenta','${esc(it)}')">${esc(it)}</div>`).join("");
+}
+
+// Autocomplete para la pantalla de saldos iniciales
+function renderSiAC(q){
+  const wrap=document.getElementById("si-nc")?.parentElement;
+  if(!wrap)return;
+  let el=document.getElementById("si-ac-list");
+  const items=MC.map(m=>m.n).filter(n=>n.toLowerCase().includes((q||"").toLowerCase())).slice(0,10);
+  if(!items.length){if(el)el.innerHTML="";return;}
+  if(!el){el=document.createElement("div");el.className="ac-list";el.id="si-ac-list";wrap.appendChild(el);}
+  el.innerHTML=items.map(it=>`<div class="ac-it" onmousedown="document.getElementById('si-nc').value='${esc(it)}'">${esc(it)}</div>`).join("");
+}
+
+document.addEventListener("click",e=>{
+  if(E.drop&&!e.target.closest(".drop-wrap")){E.drop=false;render();}
+});
+
+// ─── ARRANQUE ────────────────────────────────────────────────────────────────
+// Sin SDK de Firebase (archivo suelto o sin internet) arranca contra el navegador.
+function boot(){
+  DB=leerLocal()||dbVacia();
+  if(!DB.saldos)DB.saldos={};
+  if(!DB.asientos)DB.asientos={};
+  if(!DB.cuentas||!DB.cuentas.length)DB.cuentas=MC_BASE.map(x=>({...x}));
+  if(!DB.mapCompras)DB.mapCompras={...MAP_COMPRAS_BASE};
+  MC=DB.cuentas;
+  activarEjercicio(DB.ejercicios.length?DB.ejercicios[0].id:null);
+  render();
+}
+if(MODO_LOCAL)boot();else fbInit();
+</script>
+</body>
+</html>
