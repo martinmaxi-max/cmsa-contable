@@ -519,13 +519,13 @@ const INSTRUCTIVO=[
    x:"Este asiento no tiene línea ƒ: tiene que cuadrar solo. Si el badge del encabezado marca diferencia, casi siempre falta el crédito fiscal del 814 o algún concepto de retención. Las cargas sociales y el 814 se traen del PDF desde <b>Importar → F.931</b>."},
   {t:"POR LAS COMPRAS",
    o:"Libro I.V.A. Compras del mes.",
-   p:["<b>Debe — COMPRAS:</b> neto de la mercadería de reventa.",
-      "<b>Debe — cuentas de gasto:</b> servicios varios, gastos varios, combustibles, fletes, librería, reparación y mantenimiento, honorarios y alquileres, según la imputación de cada comprobante.",
+   p:["<b>Debe — COMPRAS:</b> mercadería de reventa, por el Total menos el IVA de cada comprobante.",
+      "<b>Debe — cuentas de gasto:</b> servicios varios, gastos varios, combustibles, fletes, librería, reparación y mantenimiento, honorarios y alquileres, según la imputación de cada comprobante y también por Total menos IVA.",
       "<b>Debe — D.G.I. I.V.A. CRÉDITO FISCAL:</b> total de crédito fiscal del libro.",
       "<b>Haber — CAJA:</b> la parte pagada al contado.",
       "<b>Haber — PROVEEDORES:</b> es ƒ, queda lo que va a cuenta corriente.",
       "Se importa desde <b>Importar → Compras</b> con el resumen del libro. La columna CUENTA del Excel se traduce con una tabla de equivalencias que se guarda y se edita una sola vez."],
-   x:"El neto no gravado y el exento también se imputan a la cuenta de gasto o compra: solo el gravado genera crédito fiscal."},
+   x:"Al tomar Total menos IVA, a la cuenta de gasto o compra va todo lo que no es crédito fiscal: neto gravado, no gravado, exento y también percepciones u otros conceptos que traiga el comprobante. La vista previa de la importación muestra cuánto es esa parte en cada mes."},
   {t:"POR COBRO DE VENTAS EN CUENTA CORRIENTE",
    o:"Recibos de cobranza del mes y certificados de retención sufridos.",
    p:["<b>Haber — DEUDORES POR VENTAS:</b> se carga a mano, es el total de la cobranza imputada a la cuenta corriente.",
@@ -1501,8 +1501,11 @@ function impArchivoCompras(input){
   E.imp.archivo=f.name;E.imp.err="";
   leerExcel(f,rows=>{
     try{
-      const hi=rows.findIndex(r=>r&&r.some(c=>/neto\s*gravado/i.test(String(c||""))));
-      if(hi<0)throw new Error("no encontré la fila de encabezados (falta 'Neto Gravado')");
+      // La fila de encabezados es la que tiene Total, IVA y Cuenta (o, como antes, Neto Gravado)
+      const tiene=(r,re)=>r.some(c=>re.test(String(c==null?"":c).trim()));
+      let hi=rows.findIndex(r=>r&&tiene(r,/^total$/i)&&tiene(r,/^i\.?v\.?a\.?$/i)&&tiene(r,/^cuenta$/i));
+      if(hi<0)hi=rows.findIndex(r=>r&&tiene(r,/neto\s*gravado/i));
+      if(hi<0)throw new Error("no encontré la fila de encabezados (se esperan las columnas Total, IVA y CUENTA)");
       const H=rows[hi].map(c=>String(c||"").trim().toLowerCase());
       const col=(...alts)=>{
         for(const a of alts){const i=H.findIndex(h=>h===a);if(i>=0)return i;}
@@ -1511,25 +1514,32 @@ function impArchivoCompras(input){
       };
       const iP=col("ddjj","periodo","período"),iF=col("fecha"),iG=col("neto gravado"),
             iN=col("no gravado"),iE=col("exento"),iI=col("iva"),iT=col("total"),iC=col("cuenta");
-      if(iG<0||iI<0||iC<0)throw new Error("faltan columnas: se esperan Neto Gravado, IVA y CUENTA");
-      const datos={};const det={};let ileg=0,fuera=0,soloTotal=0;
+      if(iT<0||iI<0||iC<0)throw new Error("faltan columnas: se esperan Total, IVA y CUENTA");
+      const datos={};const det={};let ileg=0,fuera=0,sinTotal=0;
       for(let r=hi+1;r<rows.length;r++){
         const f2=rows[r];if(!f2)continue;
         const ym=(iP>=0?ymCelda(f2[iP]):null)||(iF>=0?ymCelda(f2[iF]):null);
         const cta=String(f2[iC]==null?"":f2[iC]).trim()||"(sin cuenta)";
-        let neto=numExcel(f2[iG])+numExcel(iN>=0?f2[iN]:0)+numExcel(iE>=0?f2[iE]:0);
+        // Lo que se imputa a la cuenta es Total menos IVA de cada fila: así entra
+        // todo lo que no es crédito fiscal (neto, no gravado, exento, percepciones).
+        const netoCols=numExcel(iG>=0?f2[iG]:0)+numExcel(iN>=0?f2[iN]:0)+numExcel(iE>=0?f2[iE]:0);
         const iva=numExcel(f2[iI]);
-        const tot=iT>=0?numExcel(f2[iT]):0;
-        if(!neto&&!iva){if(!tot)continue;neto=tot;soloTotal++;}
+        let tot=numExcel(f2[iT]);
+        if(!tot&&!iva&&!netoCols)continue;
+        // Fila sin Total: no hay de dónde restar, se arma con neto + IVA y se avisa
+        if(!tot){tot=netoCols+iva;sinTotal++;}
+        const neto=tot-iva;
         if(!ym){ileg++;continue;}
         det[cta]=true;
         const per=perDeFecha(ym.y,ym.m);
         if(per<0){fuera++;continue;}
-        const d=datos[per]=datos[per]||{cuentas:{},iva:0,total:0};
+        const d=datos[per]=datos[per]||{cuentas:{},otros:{},iva:0,total:0};
         d.cuentas[cta]=(d.cuentas[cta]||0)+neto;
+        // parte de la fila que no es neto gravado / no gravado / exento (percepciones y otros)
+        d.otros[cta]=(d.otros[cta]||0)+(neto-netoCols);
         d.iva+=iva;d.total+=tot;
       }
-      E.imp.raw={origen:"compras",datos,detectadas:Object.keys(det).sort(),ileg,fuera,soloTotal};
+      E.imp.raw={origen:"compras",datos,detectadas:Object.keys(det).sort(),ileg,fuera,sinTotal,hayNetoCols:iG>=0};
       if(!DB.mapCompras)DB.mapCompras={...MAP_COMPRAS_BASE};
       construirCompras();render();
     }catch(err){impError("No pude procesar el archivo: "+err.message);}
@@ -1539,24 +1549,24 @@ function construirCompras(){
   const raw=E.imp.raw;if(!raw||raw.origen!=="compras")return;
   const items=[],sinMapa=new Set();
   Object.keys(raw.datos).map(Number).sort((a,b)=>a-b).forEach(per=>{
-    const d=raw.datos[per];const val={};let neto=0;
+    const d=raw.datos[per];const val={};let neto=0,otros=0;
     Object.keys(d.cuentas).forEach(c=>{
       const dest=mapCompra(c);
       if(dest===EXCLUIR)return;
       if(!dest){sinMapa.add(c);return;}
       val[dest+"|D"]=(val[dest+"|D"]||0)+d.cuentas[c];
-      neto+=d.cuentas[c];
+      neto+=d.cuentas[c];otros+=(d.otros||{})[c]||0;
     });
     if(d.iva)val["D.G.I. I.V.A. CRÉDITO FISCAL|D"]=d.iva;
     if(!Object.keys(val).length)return;
-    const dif=d.total-(neto+d.iva);
     items.push({per,tipo:"POR LAS COMPRAS",valores:val,
-      nota:Math.abs(dif)>1?"El total del Excel supera a neto + IVA en "+fmtD(dif)+" (percepciones): cargalas a mano.":""});
+      nota:"Imputado a las cuentas (Total menos IVA de cada fila): "+fmtD(neto)+
+        ((raw.hayNetoCols&&Math.abs(otros)>1)?" &middot; incluye "+fmtD(otros)+" que no es neto gravado, no gravado ni exento (percepciones y otros conceptos)":"")});
   });
   const av=[];
   if(raw.fuera)av.push(raw.fuera+" comprobantes quedaron afuera del ejercicio "+ejLabel()+".");
   if(raw.ileg)av.push(raw.ileg+" filas tienen una fecha que no pude interpretar.");
-  if(raw.soloTotal)av.push(raw.soloTotal+" comprobantes venían sin discriminar: tomé el Total como neto.");
+  if(raw.sinTotal)av.push(raw.sinTotal+" filas venían sin importe en la columna Total: en esas tomé neto gravado + no gravado + exento. Revisalas en el Excel.");
   if(sinMapa.size)av.push("Sin equivalencia y por eso excluidas: "+[...sinMapa].join(", ")+".");
   E.imp.prop={origen:"compras",items};E.imp.avisos=av;E.imp.acc={};
 }
@@ -2909,7 +2919,7 @@ function render(){
     }
     else if(sub==="compras"){
       h+=caja("Subí el resumen de compras",
-        "Columnas esperadas: <b>DDJJ</b> o <b>Fecha</b>, <b>Neto Gravado</b>, <b>No Gravado</b>, <b>Exento</b>, <b>IVA</b>, <b>Total</b> y <b>CUENTA</b>. Agrupa por mes y por cuenta: el neto va al Debe de la cuenta de gasto, el IVA a Crédito Fiscal, y Proveedores queda como línea de cierre. La parte pagada al contado la cargás vos en Caja.",
+        "Columnas esperadas: <b>DDJJ</b> o <b>Fecha</b>, <b>IVA</b>, <b>Total</b> y <b>CUENTA</b>. De cada fila se toma <b>Total menos IVA</b> y se totaliza por mes y por cuenta al Debe; el IVA va a Crédito Fiscal y Proveedores queda como línea de cierre. La parte pagada al contado la cargás vos en Caja.",
         ".xlsx,.xls","impArchivoCompras");
       if(E.imp.raw&&E.imp.raw.origen==="compras"){
         h+=`<div class="card" style="padding:14px;margin-bottom:12px">
