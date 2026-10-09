@@ -369,7 +369,7 @@ let MC=MC_BASE;
 const PL={
   "POR VENTAS DEL MES S/ LIBRO I.V.A.":[
     {n:"CAJA",t:"D",autoSplit:0.20},{n:"DEUDORES POR VENTAS",t:"D",autoSplit:0.80},
-    {n:"VENTAS",t:"H"},{n:"I.V.A. DÉBITO FISCAL",t:"H"}],
+    {n:"VENTAS",t:"H"},{n:"I.V.A. DÉBITO FISCAL",t:"H",cruce:"debfisc"}],
   "POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES":[
     {n:"D.G.R. INGRESOS BRUTOS",t:"D"},
     {n:"RETEN. Y PERCEP. IIBB",t:"H"},
@@ -425,9 +425,10 @@ const PL={
     {n:"HONORARIOS",t:"D"},{n:"ALQUILERES",t:"D"},
     {n:"CAJA",t:"H"},{n:"PROVEEDORES",t:"H",formula:true}],
   "POR COBRO DE VENTAS EN CUENTA CORRIENTE":[
-    {n:"CAJA",t:"D"},{n:"RETEN. Y PERCEP. IIBB",t:"D"},{n:"RETEN. Y PERCEP. I.V.A.",t:"D"},
+    {n:"CAJA",t:"D",formula:true},
+    {n:"RETEN. Y PERCEP. IIBB",t:"D",cruce:"iibb"},{n:"RETEN. Y PERCEP. I.V.A.",t:"D",cruce:"iva"},
     {n:"RETENCIONES SUSS",t:"D"},{n:"RETENCIONES GANANCIAS",t:"D"},
-    {n:"DEUDORES POR VENTAS",t:"H",formula:true}],
+    {n:"DEUDORES POR VENTAS",t:"H"}],
   "POR PLAN DE PAGOS AFIP":[
     {n:"I.V.A. A PAGAR",t:"D"},{n:"INTERESES FINANCIEROS",t:"D"},
     {n:"PLAN DE PAGOS AFIP U244892",t:"H",formula:true}],
@@ -467,10 +468,10 @@ const INSTRUCTIVO=[
   {t:"POR VENTAS DEL MES S/ LIBRO I.V.A.",
    o:"Libro I.V.A. Ventas del mes (subdiario de ventas).",
    p:["<b>Haber — VENTAS:</b> total facturado neto (gravado + no gravado + exento).",
-      "<b>Haber — I.V.A. DÉBITO FISCAL:</b> débito fiscal total del libro.",
+      "<b>Haber — I.V.A. DÉBITO FISCAL:</b> se trae solo del asiento de I.V.A. del mes (el Debe de esa misma cuenta). Si todavía no cargaste ese asiento queda en cero y se completa cuando lo cargues o lo importes. El botón ƒ lo pasa a carga manual.",
       "<b>CAJA</b> y <b>DEUDORES POR VENTAS</b> se reparten solas: 20% contado y 80% cuenta corriente sobre el total del Haber.",
       "Si el reparto real fue otro, escribí el importe en una de las dos y la otra se recalcula sola para que siga cerrando. Esa línea queda marcada como <i>Manual</i>; el botón ↺ vuelve al 20/80."],
-   x:"El I.V.A. Débito Fiscal de este asiento tiene que ser el mismo que cargues en «Asiento I.V.A. del mes». Arriba en Asientos aparece un cartel que compara los dos y avisa la diferencia."},
+   x:"Como el débito fiscal viene del «Asiento I.V.A. del mes», cada vez que ese asiento cambia se actualizan solos el débito fiscal de Ventas y el reparto Caja / Deudores. El cartel de arriba en Asientos sigue comparando los dos importes, por si alguno quedó en carga manual."},
   {t:"POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES",
    o:"DDJJ mensual de Ingresos Brutos — DGR San Juan.",
    p:["<b>Debe — D.G.R. INGRESOS BRUTOS:</b> Total Impuesto Determinado del período.",
@@ -494,7 +495,7 @@ const INSTRUCTIVO=[
    x:"Si el mismo mes tiene ingresos y egresos del mismo banco, van en dos asientos separados. El importador ya los separa así."},
   {t:"POR ASIENTO I.V.A. DEL MES",
    o:"DDJJ de I.V.A. del período (F.2002).",
-   p:["<b>Debe — I.V.A. DÉBITO FISCAL:</b> débito fiscal del período (el mismo del asiento de Ventas).",
+   p:["<b>Debe — I.V.A. DÉBITO FISCAL:</b> débito fiscal del período. De acá lo toma el asiento de Ventas del mes.",
       "<b>Haber — D.G.I. I.V.A. CRÉDITO FISCAL:</b> crédito fiscal del Libro I.V.A. Compras.",
       "<b>Haber — CREDITO FISCAL DTO 814:</b> cómputo del decreto 814 sobre contribuciones patronales.",
       "<b>Haber — RETEN. Y PERCEP. I.V.A.:</b> retenciones y percepciones de IVA sufridas en el mes.",
@@ -527,10 +528,13 @@ const INSTRUCTIVO=[
    x:"El neto no gravado y el exento también se imputan a la cuenta de gasto o compra: solo el gravado genera crédito fiscal."},
   {t:"POR COBRO DE VENTAS EN CUENTA CORRIENTE",
    o:"Recibos de cobranza del mes y certificados de retención sufridos.",
-   p:["<b>Debe — RETEN. Y PERCEP. IIBB / RETEN. Y PERCEP. I.V.A. / RETENCIONES SUSS / RETENCIONES GANANCIAS:</b> retenciones que los clientes practicaron al pagar.",
-      "<b>Debe — CAJA:</b> lo efectivamente cobrado.",
-      "<b>Haber — DEUDORES POR VENTAS:</b> es ƒ, total de la cobranza imputada a la cuenta corriente.",
-      "Las retenciones sufridas se importan desde <b>Importar → Retenciones</b> con el Excel de ARCA: totaliza por mes y carga la línea que corresponda."],
+   p:["<b>Haber — DEUDORES POR VENTAS:</b> se carga a mano, es el total de la cobranza imputada a la cuenta corriente.",
+      "<b>Debe — RETEN. Y PERCEP. IIBB:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de devengamiento de impuestos provinciales y municipales del mes, menos el Debe de esa cuenta en los asientos de egresos bancarios de Santander, Galicia y Credicoop.",
+      "<b>Debe — RETEN. Y PERCEP. I.V.A.:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de I.V.A. del mes, menos el Debe de esa cuenta en los asientos de egresos bancarios.",
+      "<b>Debe — RETENCIONES SUSS / RETENCIONES GANANCIAS:</b> se importan desde <b>Importar → Retenciones</b> con el Excel de ARCA. Totaliza por mes y carga cada mes en su asiento; se puede importar por tandas (por ejemplo seis meses y después los otros seis).",
+      "<b>Debe — CAJA:</b> es ƒ, Deudores por Ventas menos todas las retenciones del Debe.",
+      "El asiento se va armando solo: aparece como <b>parcial</b> en cuanto alguna de sus cuentas tiene importe, y cierra cuando cargás Deudores por Ventas.",
+      "En las líneas calculadas, el botón ƒ las pasa a carga manual y las vuelve a automático."],
    x:"Las retenciones sufridas se cargan siempre en el mes del certificado, aunque el cobro se acredite después."},
   {t:"POR PLAN DE PAGOS AFIP",
    o:"Acuse de presentación del plan de facilidades.",
@@ -575,7 +579,12 @@ let E={vista:"carga",mes:0,emp:"",ej:"",drop:false,ecta:null,bq:"",acOpen:null,s
   instQ:"",instOpen:{},
   imp:{sub:"banco",bank:"SANTANDER",reten:"GANANCIAS",archivo:"",prop:null,avisos:[],acc:{},raw:null,err:""}};
 let uid_=0;
-const nid=()=>"x"+(++uid_);
+let _impTok=0; // cambia cada vez que se descarta una importación en curso
+// Los ids llevan un prefijo propio de cada sesión: si arrancaran siempre en x1,
+// un asiento creado hoy chocaría con uno guardado ayer (o con uno del otro
+// usuario) y las ediciones irían a parar al asiento equivocado.
+const SES_ID=Date.now().toString(36)+Math.floor(Math.random()*46656).toString(36);
+const nid=()=>"x"+SES_ID+"_"+(++uid_);
 const uid=p=>p+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
 
 // ─── MODELO DE DATOS ──────────────────────────────────────────────────────────
@@ -862,6 +871,7 @@ function slug(x){return String(x||"").toLowerCase().normalize("NFD").replace(/[\
 
 function activarEjercicio(id){
   const ej=getEj(id);
+  _impTok++;
   E.imp={sub:E.imp?E.imp.sub:"banco",bank:E.imp?E.imp.bank:"SANTANDER",reten:E.imp?E.imp.reten:"GANANCIAS",archivo:"",prop:null,avisos:[],acc:{},raw:null,err:""};
   E.ej=ej?ej.id:"";
   E.emp=ej?ej.emp:(DB.empresas[0]?DB.empresas[0].id:"");
@@ -931,7 +941,8 @@ function tG(){
 }
 
 // Compara el I.V.A. Débito Fiscal cargado en "Ventas del mes" (Haber) contra el
-// cargado en "Asiento I.V.A. del mes" (Debe). Ambos son manuales; deben coincidir.
+// cargado en "Asiento I.V.A. del mes" (Debe). El de Ventas se trae del de IVA,
+// salvo que alguien lo haya pasado a carga manual; por eso se sigue comparando.
 function getIvaCheck(mes){
   const list=E.apm[mes]||[];
   let vVentas=0,vAsiento=0;
@@ -980,7 +991,8 @@ function crA(t){
   const p=PL[t]||[];
   const ls=p.length?p.map(x=>({
     id:nid(),cuenta:x.n,codigo:cod(x.n),ccodigo:ccod(x.n),debe:"",haber:"",
-    _t:x.t,formula:x.formula||false,autoSplit:x.autoSplit!=null?x.autoSplit:null,swing:x.swing||null
+    _t:x.t,formula:x.formula||false,autoSplit:x.autoSplit!=null?x.autoSplit:null,swing:x.swing||null,
+    cruce:x.cruce||null
   })):[{id:nid(),cuenta:"",codigo:"",ccodigo:"XXXXX",debe:"",haber:"",_t:"",formula:false,autoSplit:null,swing:null}];
   return{id:nid(),tipo:t,lineas:ls,col:false,manualAuto:null};
 }
@@ -999,7 +1011,7 @@ function delL(aid,lid){setMes(getMes().map(a=>a.id===aid?{...a,lineas:a.lineas.f
 
 function updLSilent(aid,lid,f,v){
   const list=getMes();
-  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;l[f]=v;if(f==="cuenta"){l.codigo=cod(v);l.ccodigo=ccod(v);}if(f==="debe"&&v){l.haber="";}if(f==="haber"&&v){l.debe="";}return;}}
+  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;l[f]=v;if(f==="cuenta"){l.codigo=cod(v);l.ccodigo=ccod(v);if(l.cruce&&CRUCES[l.cruce]&&CRUCES[l.cruce].cuenta!==v)l.cruce=null;}if(f==="debe"&&v){l.haber="";}if(f==="haber"&&v){l.debe="";}return;}}
 }
 function updLRender(aid,lid,f,v){
   updLSilent(aid,lid,f,v);
@@ -1012,6 +1024,8 @@ function updLRender(aid,lid,f,v){
     if(l&&l.cuenta==="CREDITO FISCAL DTO 814"&&(f==="debe"||f==="haber")){if(a.ddjjCF!=null)a.manual814=true;}
     recalcDerivados(a,E.mes);
     (E.apm[E.mes]||[]).forEach(x=>{if(x!==a)recalcDerivados(x,E.mes);});
+    const t=String(a.tipo||"");
+    if(t===CRUCES.iibb.origen||t===CRUCES.iva.origen||t.indexOf(T_EGR)===0)asegurarCobro(E.mes);
   }
   render();
 }
@@ -1022,7 +1036,9 @@ function updLRender(aid,lid,f,v){
 // que la suma siga cerrando (ej: más en Caja => menos en Deudores).
 function recalcAutoSplit(aid){
   const a=getMes().find(x=>x.id===aid);
-  if(!a)return;
+  if(a)recalcSplitDe(a);
+}
+function recalcSplitDe(a){
   const autoLs=a.lineas.filter(l=>l.autoSplit!=null);
   if(!autoLs.length)return;
   const lado=autoLs[0]._t; // lado (D o H) donde están las líneas de reparto
@@ -1058,7 +1074,10 @@ function flpT(aid,lid){
   );render();
 }
 function togFormula(aid,lid){
-  setMes(getMes().map(a=>{if(a.id!==aid)return a;return{...a,lineas:a.lineas.map(l=>l.id!==lid?l:{...l,formula:!l.formula})};}));render();
+  setMes(getMes().map(a=>{if(a.id!==aid)return a;return{...a,lineas:a.lineas.map(l=>{
+    if(l.id!==lid)return l;
+    if(l.cruce&&!l.formula)return{...l,cruceOff:!l.cruceOff};
+    return{...l,formula:!l.formula};})};}));render();
 }
 function copM(){if(E.mes===0)return;const p=E.apm[E.mes-1]||[];setMes(p.map(a=>({...a,id:nid(),lineas:a.lineas.map(l=>({...l,id:nid(),debe:"",haber:""}))})));render();}
 
@@ -1083,7 +1102,7 @@ const MAP_COMPRAS_BASE={"PROVEEDORES":"COMPRAS","GASTOS BANCO":"COMISIONES Y GTO
 
 function impSub(k){E.imp.sub=k;impReset();render();}
 function impSetBank(b){E.imp.bank=b;impReset();render();}
-function impReset(){E.imp.archivo="";E.imp.prop=null;E.imp.avisos=[];E.imp.acc={};E.imp.raw=null;E.imp.err="";}
+function impReset(){E.imp.archivo="";E.imp.prop=null;E.imp.avisos=[];E.imp.acc={};E.imp.raw=null;E.imp.err="";E.imp.errs=[];E.imp.prog="";_impTok++;}
 function impCancelar(){impReset();render();}
 
 // ─── LECTURA DE ARCHIVOS ─────────────────────────────────────────────────────
@@ -1122,29 +1141,32 @@ function leerExcel(file,cb){
   r.readAsArrayBuffer(file);
 }
 // Texto del PDF agrupado en líneas visuales (ordena por fila y por columna)
-function leerPDF(file,cb){
-  if(!window.pdfjsLib){impError("No se cargó la librería de PDF. Revisá la conexión a internet y recargá.");return;}
-  pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  const r=new FileReader();
-  r.onload=function(ev){
-    pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise.then(async pdf=>{
-      const out=[];
-      for(let p=1;p<=pdf.numPages;p++){
-        const tc=await (await pdf.getPage(p)).getTextContent();
-        const filas={};
-        tc.items.forEach(it=>{
-          if(!it.str||!it.str.trim())return;
-          const y=Math.round(it.transform[5]/2)*2;
-          (filas[y]=filas[y]||[]).push({x:it.transform[4],s:it.str});
-        });
-        Object.keys(filas).map(Number).sort((a,b)=>b-a).forEach(y=>{
-          out.push(filas[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(" ").replace(/\s+/g," ").trim());
-        });
-      }
-      cb(out);
-    }).catch(err=>impError("No pude leer el PDF: "+err.message));
-  };
-  r.readAsArrayBuffer(file);
+function leerPDFp(file){
+  return new Promise((ok,mal)=>{
+    if(!window.pdfjsLib){mal(new Error("no se cargó la librería de PDF; revisá la conexión a internet y recargá"));return;}
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const r=new FileReader();
+    r.onerror=()=>mal(new Error("no pude abrir el archivo"));
+    r.onload=function(ev){
+      pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise.then(async pdf=>{
+        const out=[];
+        for(let p=1;p<=pdf.numPages;p++){
+          const tc=await (await pdf.getPage(p)).getTextContent();
+          const filas={};
+          tc.items.forEach(it=>{
+            if(!it.str||!it.str.trim())return;
+            const y=Math.round(it.transform[5]/2)*2;
+            (filas[y]=filas[y]||[]).push({x:it.transform[4],s:it.str});
+          });
+          Object.keys(filas).map(Number).sort((a,b)=>b-a).forEach(y=>{
+            out.push(filas[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(" ").replace(/\s+/g," ").trim());
+          });
+        }
+        ok(out);
+      }).catch(err=>mal(new Error("el PDF no se pudo leer ("+err.message+")")));
+    };
+    r.readAsArrayBuffer(file);
+  });
 }
 function impError(m){E.imp.err=m;E.imp.prop=null;render();}
 function lineaNums(l){return String(l||"").match(/-?\d{1,3}(?:\.\d{3})*,\d{2}/g)||[];}
@@ -1208,32 +1230,183 @@ function recalcDerivados(a,per){
     const lc=a.lineas.find(l=>l.cuenta==="D.G.I. I.V.A. CRÉDITO FISCAL"&&l._t==="H");
     if(lc){lc.haber=numStr(a.ddjjCF-(l8?pn(l8.haber):0));lc.debe="";lc.derivado=true;}
   }
+  if(a.tipo===T_VENTAS){
+    // Asientos de ventas cargados antes de este cambio: si el débito fiscal que
+    // tienen ya coincide con el del asiento de IVA, quedan vinculados (no cambia
+    // ningún importe). Si no coincide, se avisa en el asiento y decide el usuario.
+    const lv=ventasSinVincular(a);
+    if(lv&&Math.abs(detalleCruce("debfisc",per).valor-pn(lv.haber))<0.005){lv.cruce="debfisc";lv.cruceOff=false;}
+  }
+  if(a.tipo===T_COBRO||a.tipo===T_VENTAS){
+    let cambio=false;
+    a.lineas.forEach(l=>{
+      if(!cruceActivo(l)||CRUCES[l.cruce].en!==a.tipo)return;
+      // Si en el mes hay más de un asiento del mismo tipo, el cruce va entero al primero.
+      const primero=(E.apm[per]||[]).find(x=>x.tipo===a.tipo&&x.lineas.some(y=>y.cruce===l.cruce&&cruceActivo(y)));
+      const v=numStr((primero&&primero!==a)?0:detalleCruce(l.cruce,per).valor);
+      const campo=CRUCES[l.cruce].lado==="D"?"debe":"haber",otro=campo==="debe"?"haber":"debe";
+      if(l[campo]!==v||l[otro]!==""){l[campo]=v;l[otro]="";cambio=true;}
+    });
+    // En Ventas, Caja y Deudores se reparten sobre el total del Haber: si cambió
+    // el débito fiscal hay que rehacer el reparto.
+    if(cambio&&a.lineas.some(l=>l.autoSplit!=null))recalcSplitDe(a);
+  }
+}
+// Línea de débito fiscal de un asiento de ventas que todavía se carga a mano
+// porque viene de antes (las que el usuario pasó a manual con ƒ no cuentan).
+function ventasSinVincular(a){
+  if(a.tipo!==T_VENTAS)return null;
+  return a.lineas.find(l=>l.cuenta===CRUCES.debfisc.cuenta&&l._t==="H"&&!l.formula&&!l.cruce&&!l.cruceOff)||null;
+}
+function ventasVincular(aid){
+  const a=getMes().find(x=>x.id===aid);if(!a)return;
+  const l=ventasSinVincular(a);if(!l)return;
+  l.cruce="debfisc";l.cruceOff=false;
+  render();
+}
+
+// ─── COBRO DE VENTAS EN CUENTA CORRIENTE: CRUCES ENTRE ASIENTOS ──────────────
+// Deudores por Ventas (Haber) se carga a mano. Las retenciones de IIBB e IVA
+// salen de cruzar otros asientos del mismo mes:
+//   Reten. IIBB = Haber en el devengamiento de imp. provinciales
+//                 - Debe en los egresos bancarios (Santander, Galicia, Credicoop)
+//   Reten. IVA  = Haber en el asiento de IVA del mes
+//                 - Debe en los egresos bancarios
+// SUSS y Ganancias se importan. Caja es la línea de cierre: Deudores - retenciones.
+const T_COBRO="POR COBRO DE VENTAS EN CUENTA CORRIENTE";
+const T_EGR="POR EGRESOS BANCARIOS - ";
+const T_VENTAS="POR VENTAS DEL MES S/ LIBRO I.V.A.";
+// en: asiento donde vive la línea calculada · lado: de qué lado va ·
+// origen: asiento del que se trae · directo: se copia tal cual (sin restar bancos)
+const CRUCES={
+  iibb:{en:T_COBRO,lado:"D",cuenta:"RETEN. Y PERCEP. IIBB",origen:"POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES",corto:"devengamiento de imp. prov. y municipales"},
+  iva:{en:T_COBRO,lado:"D",cuenta:"RETEN. Y PERCEP. I.V.A.",origen:"POR ASIENTO I.V.A. DEL MES",corto:"asiento de I.V.A. del mes"},
+  // El débito fiscal de Ventas del mes es el Debe de esa cuenta en el asiento de IVA
+  debfisc:{en:T_VENTAS,lado:"H",cuenta:"I.V.A. DÉBITO FISCAL",origen:"POR ASIENTO I.V.A. DEL MES",corto:"asiento de I.V.A. del mes",directo:true}
+};
+function cruceActivo(l){return !!(l.cruce&&CRUCES[l.cruce]&&!l.cruceOff&&!l.formula&&l._t===CRUCES[l.cruce].lado);}
+function valLinea(a,l,lado){
+  if(l.formula)return l._t===lado?calcFormula(a,l):0;
+  return pn(lado==="D"?l.debe:l.haber);
+}
+function detalleCruce(k,per){
+  const c=CRUCES[k];let base=0,egr=0,hayOrigen=false;const bancos={};
+  (E.apm[per]||[]).forEach(a=>{
+    const tipo=String(a.tipo||"");
+    const esOrigen=tipo===c.origen,esEgr=!c.directo&&tipo.indexOf(T_EGR)===0;
+    if(!esOrigen&&!esEgr)return;
+    if(esOrigen)hayOrigen=true;
+    a.lineas.forEach(l=>{
+      if(l.cuenta!==c.cuenta)return;
+      if(esOrigen)base+=valLinea(a,l,c.directo?"D":"H");
+      else{
+        const v=valLinea(a,l,"D");
+        if(v){const b=tipo.slice(T_EGR.length);bancos[b]=(bancos[b]||0)+v;egr+=v;}
+      }
+    });
+  });
+  const dif=Math.round((base-egr)*100)/100;
+  return{base,egr,bancos,dif,valor:Math.max(0,dif),hayOrigen};
+}
+// Recalcula todo lo derivado del ejercicio abierto. Los cruces dependen de otros
+// asientos del mismo mes, así que se refrescan en cada render y no solo en el
+// mes que se está mirando (si no, Mayores y Formato Chino quedarían viejos).
+function recalcTodos(){
+  if(!DB||!getEj())return;
+  const as=E.apm;
+  Object.keys(as).forEach(k=>{
+    const per=parseInt(k,10);
+    // Ids repetidos dentro del mes (quedaron de versiones anteriores): se renombran.
+    const vistos=new Set();
+    (as[k]||[]).forEach(a=>{
+      if(vistos.has(a.id))a.id=nid();vistos.add(a.id);
+      (a.lineas||[]).forEach(l=>{if(vistos.has(l.id)){if(a.manualAuto===l.id)a.manualAuto=null;l.id=nid();}vistos.add(l.id);});
+    });
+    (as[k]||[]).forEach(a=>recalcDerivados(a,per));
+  });
+}
+// Arma el asiento de cobro (parcial) cuando ya hay retenciones para cruzar y
+// todavía no existe. Se llama al importar y al editar los asientos de origen.
+function asegurarCobro(per){
+  const lista=E.apm[per]||[];
+  if(lista.some(a=>a.tipo===T_COBRO))return false;
+  if(detalleCruce("iibb",per).valor<=0&&detalleCruce("iva",per).valor<=0)return false;
+  const a=crA(T_COBRO);
+  E.apm={...E.apm,[per]:[...lista,a]};
+  recalcDerivados(a,per);
+  return true;
+}
+function estadoCobro(a,per){
+  const deud=a.lineas.filter(l=>!l.formula&&l._t==="H").reduce((s,l)=>s+pn(l.haber),0);
+  const ret=a.lineas.filter(l=>!l.formula&&l._t==="D").reduce((s,l)=>s+pn(l.debe),0);
+  return{deud,ret,caja:Math.max(0,deud-ret),parcial:deud<=0,excede:deud>0&&ret-deud>0.02};
+}
+// Asientos cargados con la estructura anterior (Caja a mano, Deudores calculado)
+function cobroViejo(a){
+  return a.tipo===T_COBRO&&!a.lineas.some(l=>l.cruce)&&a.lineas.some(l=>l.cuenta==="DEUDORES POR VENTAS"&&l.formula&&l._t==="H");
+}
+function cobroMigrar(aid){
+  const a=getMes().find(x=>x.id===aid);if(!a||!cobroViejo(a))return;
+  const lD=a.lineas.find(l=>l.cuenta==="DEUDORES POR VENTAS"&&l.formula&&l._t==="H");
+  const total=calcFormula(a,lD);
+  lD.formula=false;lD.haber=numStr(total);lD.debe="";
+  const nueva=(cuenta,extra)=>Object.assign({id:nid(),cuenta,codigo:cod(cuenta),ccodigo:ccod(cuenta),debe:"",haber:"",
+    _t:"D",formula:false,autoSplit:null,swing:null,cruce:null},extra);
+  let lC=a.lineas.find(l=>l.cuenta==="CAJA"&&l._t==="D");
+  if(lC){lC.formula=true;lC.debe="";lC.haber="";}
+  else a.lineas.unshift(nueva("CAJA",{formula:true}));
+  Object.keys(CRUCES).filter(k=>CRUCES[k].en===T_COBRO).forEach(k=>{
+    const l=a.lineas.find(x=>x.cuenta===CRUCES[k].cuenta&&x._t==="D"&&!x.formula);
+    if(l){l.cruce=k;l.cruceOff=false;}
+    else a.lineas.splice(a.lineas.indexOf(lD),0,nueva(CRUCES[k].cuenta,{cruce:k}));
+  });
+  render();
 }
 
 // ─── CONFIRMACIÓN GENÉRICA ───────────────────────────────────────────────────
 function impAcc(i,v){E.imp.acc[i]=v;render();}
 function impExiste(per,tipo){return (E.apm[per]||[]).some(a=>a.tipo===tipo);}
+// Importe que ya tiene cargada la línea que va a tocar un importador de retenciones
+function impPatchActual(it){
+  const a=(E.apm[it.per]||[]).find(x=>x.tipo===it.tipo);if(!a)return 0;
+  const l=a.lineas.find(x=>x.cuenta===it.patch.cuenta&&x._t===it.patch.t&&!x.formula);
+  return l?pn(it.patch.t==="D"?l.debe:l.haber):0;
+}
+// ¿Hay algo cargado que esta importación pisaría? En las retenciones lo que
+// importa es si la línea ya tiene importe, no si el asiento existe (el asiento
+// de cobro se va armando de a partes).
+function impYaHay(it){return it.patch?impPatchActual(it)>0.004:impExiste(it.per,it.tipo);}
+function impAccTodos(v){
+  const p=E.imp.prop;if(!p)return;
+  p.items.forEach((it,idx)=>{
+    if(!impYaHay(it))return;
+    E.imp.acc[idx]=v==="otro"?(it.patch?"sumar":"agregar"):v;
+  });
+  render();
+}
 function impConfirmar(){
   const p=E.imp.prop;if(!p||!p.items.length)return;
-  let n=0;
+  let n=0,primerPer=null;const tocados=new Set();
   p.items.forEach((it,idx)=>{
-    const acc=E.imp.acc[idx]||(impExiste(it.per,it.tipo)?"reemplazar":"agregar");
+    const acc=E.imp.acc[idx]||(impYaHay(it)?"reemplazar":"agregar");
     if(acc==="omitir")return;
     const lista=[...(E.apm[it.per]||[])];
     if(it.patch){
       let a=lista.find(x=>x.tipo===it.tipo);
       if(!a){a=crA(it.tipo);lista.push(a);}
-      let l=a.lineas.find(x=>x.cuenta===it.patch.cuenta&&x._t===it.patch.t);
+      let l=a.lineas.find(x=>x.cuenta===it.patch.cuenta&&x._t===it.patch.t&&!x.formula);
       if(!l){
         l={id:nid(),cuenta:it.patch.cuenta,codigo:cod(it.patch.cuenta),ccodigo:ccod(it.patch.cuenta),
-           debe:"",haber:"",_t:it.patch.t,formula:false,autoSplit:null,swing:null};
-        const iC=a.lineas.findIndex(x=>x.formula);
+           debe:"",haber:"",_t:it.patch.t,formula:false,autoSplit:null,swing:null,cruce:null};
+        const iC=a.lineas.findIndex(x=>x.cuenta==="DEUDORES POR VENTAS"&&x._t==="H");
         if(iC>=0)a.lineas.splice(iC,0,l);else a.lineas.push(l);
       }
       const campo=it.patch.t==="D"?"debe":"haber";
       const base=acc==="sumar"?pn(l[campo]):0;
       l[campo]=numStr(base+it.patch.monto);
       l[it.patch.t==="D"?"haber":"debe"]="";
+      // Un importe importado manda sobre el cálculo automático de esa línea
+      if(l.cruce)l.cruceOff=true;
     }else{
       const a=buildDesdePlantilla(it.tipo,it.valores,it.meta);
       const i=lista.findIndex(x=>x.tipo===it.tipo);
@@ -1241,14 +1414,23 @@ function impConfirmar(){
       recalcDerivados(a,it.per);
     }
     E.apm={...E.apm,[it.per]:lista};
+    tocados.add(it.per);
+    if(primerPer===null)primerPer=it.per;
     n++;
   });
-  const primerPer=p.items.length?p.items[0].per:E.mes;
+  // Con todo cargado: refresca lo derivado y arma los cobros parciales que falten
+  recalcTodos();
+  let parc=0;
+  tocados.forEach(per=>{if(asegurarCobro(per))parc++;});
   impReset();
-  E.vista="carga";E.mes=primerPer;
-  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v==="carga"));
+  if(primerPer!==null){
+    E.vista="carga";E.mes=primerPer;
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v==="carga"));
+  }
   render();
-  alert("Importación completa: "+n+" asiento(s).");
+  alert(n?("Importación completa: "+n+" asiento(s)."+
+    (parc?"\nAdemás se armaron "+parc+" asiento(s) parciales de cobro de ventas en cuenta corriente con las retenciones que ya se pueden calcular.":""))
+    :"No se importó nada: todos los meses estaban en Omitir.");
 }
 
 // ─── 1. BANCO ────────────────────────────────────────────────────────────────
@@ -1379,105 +1561,166 @@ function construirCompras(){
   E.imp.prop={origen:"compras",items};E.imp.avisos=av;E.imp.acc={};
 }
 
-// ─── 3. IIBB (PDF) ───────────────────────────────────────────────────────────
-function impArchivoIIBB(input){
-  const f=input.files&&input.files[0];if(!f)return;
-  E.imp.archivo=f.name;E.imp.err="";
-  leerPDF(f,ls=>{
-    try{
-      const txt=ls.join(" | ");
-      const mp=txt.match(/Periodo:?\s*(20\d{2})-(0[1-9]|1[0-2])/i)||txt.match(/IB\d{11}(20\d{2})(0[1-9]|1[0-2])IB/);
-      if(!mp)throw new Error("no encontré el período de la DDJJ");
-      const det=valEtiqueta(ls,/Total\s+Impuesto\s+Determinado/i);
-      const ret=valEtiqueta(ls,/Total\s+Retenciones\s+y\s+Percepciones/i);
-      if(det==null||ret==null)throw new Error("no encontré el impuesto determinado o las retenciones");
-      const saldoAnt=valEtiqueta(ls,/Saldo\s+a\s+favor\s+Dec\w*\s+Jurada\s+Anterior/i)||0;
-      const aIng=valEtiqueta(ls,/Monto\s+a\s+Ingresar/i)||0;
-      const y=parseInt(mp[1],10),m=parseInt(mp[2],10)-1;
-      const per=perDeFecha(y,m);
-      if(per<0)throw new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");
-      const val={"D.G.R. INGRESOS BRUTOS|D":det,"RETEN. Y PERCEP. IIBB|H":ret};
-      if(saldoAnt)val["SDO. FAVOR IMP A LOS INGRESOS BRUTOS|H"]=saldoAnt;
-      const av=[];
-      const arr=per>0?saldoCuentaHastaMes("SDO. FAVOR IMP A LOS INGRESOS BRUTOS",per):0;
-      if(Math.abs(arr-saldoAnt)>1)av.push("El saldo a favor del mes anterior que trae el PDF ("+fmtD(saldoAnt)+") no coincide con el que viene arrastrando el sistema ("+fmtD(arr)+"). Revisalo.");
-      const neto=det-ret-saldoAnt;
-      if(Math.abs(Math.max(0,neto)-aIng)>1)av.push("Cuidado: el monto a ingresar del PDF es "+fmtD(aIng)+" y de estos datos sale "+fmtD(neto)+".");
-      E.imp.prop={origen:"iibb",items:[{per,tipo:"POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES",valores:val,
-        nota:"Determinado "+fmtD(det)+" menos retenciones "+fmtD(ret)+(saldoAnt?" menos saldo a favor anterior "+fmtD(saldoAnt):"")+" = "+fmtD(neto)}]};
-      E.imp.avisos=av;E.imp.acc={};render();
-    }catch(err){impError("No pude leer la DDJJ: "+err.message);}
-  });
-}
+// ─── 3, 4 y 5. DDJJ EN PDF (IIBB, IVA, F.931) ────────────────────────────────
+// Cada parser recibe las líneas de texto del PDF y devuelve un item de la
+// propuesta, o tira un Error con el motivo. No tocan el estado: así se pueden
+// leer muchos PDF en una sola tanda y recién al final armar la propuesta.
+const T_IIBB="POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES";
+const T_IVA="POR ASIENTO I.V.A. DEL MES";
+const T_SUELDOS="POR DEVENGAMIENTO DE SUELDOS";
+const PDF_TIPOS={iibb:"DDJJ de Ingresos Brutos",iva:"DDJJ de IVA",f931:"F.931"};
+function fueraDeEj(y,m){return new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");}
 
-// ─── 4. IVA (PDF F.2051) ─────────────────────────────────────────────────────
-function impArchivoIVA(input){
-  const f=input.files&&input.files[0];if(!f)return;
-  E.imp.archivo=f.name;E.imp.err="";
-  leerPDF(f,ls=>{
+function parseIIBB(ls){
+  const txt=ls.join(" | ");
+  const mp=txt.match(/Periodo:?\s*(20\d{2})-(0[1-9]|1[0-2])/i)||txt.match(/IB\d{11}(20\d{2})(0[1-9]|1[0-2])IB/);
+  if(!mp)throw new Error("no encontré el período de la DDJJ");
+  const det=valEtiqueta(ls,/Total\s+Impuesto\s+Determinado/i);
+  const ret=valEtiqueta(ls,/Total\s+Retenciones\s+y\s+Percepciones/i);
+  if(det==null||ret==null)throw new Error("no encontré el impuesto determinado o las retenciones");
+  const saldoAnt=valEtiqueta(ls,/Saldo\s+a\s+favor\s+Dec\S*\s+Jurada\s+Anterior/i)||0;
+  const aIng=valEtiqueta(ls,/Monto\s+a\s+Ingresar/i)||0;
+  const y=parseInt(mp[1],10),m=parseInt(mp[2],10)-1;
+  const per=perDeFecha(y,m);
+  if(per<0)throw fueraDeEj(y,m);
+  const val={"D.G.R. INGRESOS BRUTOS|D":det,"RETEN. Y PERCEP. IIBB|H":ret};
+  if(saldoAnt)val["SDO. FAVOR IMP A LOS INGRESOS BRUTOS|H"]=saldoAnt;
+  const neto=det-ret-saldoAnt;
+  return{k:"iibb",per,tipo:T_IIBB,valores:val,x:{det,ret,saldoAnt,aIng,neto},
+    nota:"Determinado "+fmtD(det)+" menos retenciones "+fmtD(ret)+(saldoAnt?" menos saldo a favor anterior "+fmtD(saldoAnt):"")+" = "+fmtD(neto)};
+}
+function parseIVA(ls){
+  let y=null,m=null;
+  const i=ls.findIndex(l=>/^Per[ií]odo\b/i.test(l));
+  for(let j=(i<0?0:i);j<ls.length&&y===null;j++){
+    const mm=ls[j].match(/\b(20\d{2})(0[1-9]|1[0-2])\b/);
+    if(mm){y=parseInt(mm[1],10);m=parseInt(mm[2],10)-1;}
+  }
+  if(y===null)throw new Error("no encontré el período");
+  const deb=valEtiqueta(ls,/Total\s+del\s+d[eé]bito\s+fiscal/i);
+  const cre=valEtiqueta(ls,/Total\s+del\s+cr[eé]dito\s+fiscal/i);
+  if(deb==null||cre==null)throw new Error("no encontré el débito o el crédito fiscal");
+  const ret=valEtiqueta(ls,/Total\s+de\s+retenciones,\s*percepciones/i)||0;
+  const per=perDeFecha(y,m);
+  if(per<0)throw fueraDeEj(y,m);
+  // El DTO 814 se completa al armar la propuesta (puede venir en la misma tanda)
+  return{k:"iva",per,tipo:T_IVA,valores:{"I.V.A. DÉBITO FISCAL|D":deb,"RETEN. Y PERCEP. I.V.A.|H":ret},
+    meta:{ddjjCF:cre},x:{deb,cre,ret},nota:""};
+}
+function parse931(ls){
+  const mp=ls.join(" | ").match(/(0[1-9]|1[0-2])\/(20\d{2})/);
+  if(!mp)throw new Error("no encontré el período");
+  const codv=c=>{
+    const re=new RegExp("\\b"+c+"\\s*-\\s*[^0-9]{0,60}?(-?\\d{1,3}(?:\\.\\d{3})*,\\d{2})");
+    const l=ls.find(x=>re.test(x));
+    return l?numAR(l.match(re)[1]):0;
+  };
+  const aporSS=codv("301"),aporOS=codv("302"),conSS=codv("351"),conOS=codv("352"),
+        lrt=codv("312"),scvo=codv("028"),renatre=codv("360"),vales=codv("270"),uatre=codv("935");
+  const contrib=conSS+conOS+lrt+scvo+renatre+vales+uatre;
+  const aportes=aporSS+aporOS;
+  if(!contrib&&!aportes)throw new Error("no encontré la sección de montos que se ingresan");
+  // El crédito fiscal del DTO 814 es el 3,80% de la Remuneración 1
+  const rem1=valEtiqueta(ls,/Suma\s+de\s+Rem\.\s*1\s*:/i)||0;
+  const c814=Math.round(rem1*PCT_814)/100;
+  const y=parseInt(mp[2],10),m=parseInt(mp[1],10)-1;
+  const per=perDeFecha(y,m);
+  if(per<0)throw fueraDeEj(y,m);
+  const val={"CARGAS SOCIALES|D":contrib-c814,"CREDITO FISCAL DTO 814|D":c814,
+             "CARGAS SOCIALES A PAGAR|H":contrib+aportes};
+  return{k:"f931",per,tipo:T_SUELDOS,valores:val,meta:{ddjjContrib:contrib},x:{contrib,aportes,rem1,c814},
+    nota:"Contribuciones "+fmtD(contrib)+" + aportes retenidos "+fmtD(aportes)+" = "+fmtD(contrib+aportes)+" a pagar &middot; DTO 814 = 3,80% de la Rem. 1 ("+fmtD(rem1)+") = "+fmtD(c814)};
+}
+const PDF_PARSERS={iibb:parseIIBB,iva:parseIVA,f931:parse931};
+// Reconoce qué formulario es por sus etiquetas, así se pueden subir mezclados.
+function detectarPDF(ls){
+  const t=ls.join(" | ");
+  if(/Total\s+Impuesto\s+Determinado/i.test(t))return "iibb";
+  if(/Total\s+del\s+d[eé]bito\s+fiscal/i.test(t))return "iva";
+  if(/Suma\s+de\s+Rem\.\s*1/i.test(t)||/\b35[12]\s*-\s*\D/.test(t))return "f931";
+  return null;
+}
+// Con todos los PDF leídos: ordena, saca repetidos y cruza los controles entre
+// sí (el 814 del F.931 contra el IVA, el saldo a favor de IIBB mes contra mes).
+function armarPropPDF(leidos,errores){
+  const porClave={},av=[];
+  leidos.forEach(it=>{
+    const k=it.per+"|"+it.tipo;
+    if(porClave[k])av.push("Hay más de un PDF de "+PDF_TIPOS[it.k]+" para "+perLabel(it.per)+" ("+esc(porClave[k].archivo)+" y "+esc(it.archivo)+"): se toma el último. Si es una rectificativa, revisá que sea la correcta.");
+    porClave[k]=it;
+  });
+  const ORD={f931:0,iva:1,iibb:2};
+  const items=Object.keys(porClave).map(k=>porClave[k]).sort((a,b)=>a.per-b.per||ORD[a.k]-ORD[b.k]);
+  const pre=it=>items.length>1?perLabel(it.per)+": ":"";
+  items.forEach(it=>{
+    if(it.k==="iva"){
+      const s931=porClave[it.per+"|"+T_SUELDOS];
+      const c814=s931?s931.x.c814:cf814DelMes(it.per);
+      it.valores["CREDITO FISCAL DTO 814|H"]=c814;
+      it.valores["D.G.I. I.V.A. CRÉDITO FISCAL|H"]=it.x.cre-c814;
+      it.nota="Crédito fiscal de la DDJJ "+fmtD(it.x.cre)+" menos DTO 814 "+fmtD(c814)+" = "+fmtD(it.x.cre-c814);
+      const chk=getIvaCheck(it.per);
+      const ventasAMano=(E.apm[it.per]||[]).some(v=>v.tipo===T_VENTAS&&v.lineas.some(l=>l.cuenta===CRUCES.debfisc.cuenta&&l._t==="H"&&!cruceActivo(l)));
+      if(ventasAMano&&chk.vVentas>0&&Math.abs(chk.vVentas-it.x.deb)>1)
+        av.push(pre(it)+"el débito fiscal del PDF ("+fmtD(it.x.deb)+") no coincide con el que está cargado a mano en el asiento de Ventas de ese mes ("+fmtD(chk.vVentas)+").");
+      if(!c814)av.push(pre(it)+"no encontré crédito fiscal del DTO 814 en el asiento de sueldos de ese mes, así que el crédito fiscal va entero. Cuando cargues el 814 en Sueldos, este asiento se ajusta solo.");
+    }
+    if(it.k==="iibb"){
+      const prev=porClave[(it.per-1)+"|"+T_IIBB];
+      const arr=prev?Math.max(0,prev.x.ret+prev.x.saldoAnt-prev.x.det)
+                    :(it.per>0?saldoCuentaHastaMes("SDO. FAVOR IMP A LOS INGRESOS BRUTOS",it.per):0);
+      if(Math.abs(arr-it.x.saldoAnt)>1)
+        av.push(pre(it)+"el saldo a favor del mes anterior que trae el PDF ("+fmtD(it.x.saldoAnt)+") no coincide con el que "+(prev?"deja la DDJJ del mes anterior de esta misma tanda":"viene arrastrando el sistema")+" ("+fmtD(arr)+"). Revisalo.");
+      if(Math.abs(Math.max(0,it.x.neto)-it.x.aIng)>1)
+        av.push(pre(it)+"el monto a ingresar del PDF es "+fmtD(it.x.aIng)+" y de estos datos sale "+fmtD(it.x.neto)+".");
+    }
+  });
+  const f931=items.filter(it=>it.k==="f931");
+  if(f931.length){
+    av.push("Del F.931 salen las cargas sociales y el crédito fiscal del DTO 814 (3,80% de la Remuneración 1). El bruto de Sueldos y Jornales y las retenciones sindicales los cargás del libro de sueldos.");
+    av.push("Si corregís el 814 a mano, Cargas Sociales se ajusta solo para que el total de contribuciones no cambie.");
+  }
+  E.imp.errs=errores;
+  E.imp.prop=items.length?{origen:"pdf",items}:null;
+  E.imp.avisos=av;E.imp.acc={};
+}
+// Lee uno o varios PDF. "sub" es la solapa desde la que se subieron: se usa
+// como tipo solo si el archivo no se reconoce por su contenido.
+async function impArchivosPDF(input,sub){
+  const files=Array.from(input.files||[]).sort((a,b)=>a.name.localeCompare(b.name,"es",{numeric:true}));
+  if(!files.length)return;
+  impReset();
+  const tok=_impTok;
+  E.imp.archivo=files.length===1?files[0].name:files.length+" archivos";
+  const leidos=[],errores=[];
+  for(let i=0;i<files.length;i++){
+    E.imp.prog="Leyendo PDF "+(i+1)+" de "+files.length+": "+files[i].name;
+    render();
     try{
-      let y=null,m=null;
-      const i=ls.findIndex(l=>/^Per[ií]odo\b/i.test(l));
-      for(let j=(i<0?0:i);j<ls.length&&y===null;j++){
-        const mm=ls[j].match(/\b(20\d{2})(0[1-9]|1[0-2])\b/);
-        if(mm){y=parseInt(mm[1],10);m=parseInt(mm[2],10)-1;}
+      const ls=await leerPDFp(files[i]);
+      if(_impTok!==tok)return;
+      const k=detectarPDF(ls);
+      let it;
+      try{it=PDF_PARSERS[k||sub](ls);}
+      catch(e2){
+        if(k)throw e2;
+        throw new Error("no lo reconozco como DDJJ de Ingresos Brutos, DDJJ de IVA ni F.931 ("+e2.message+")");
       }
-      if(y===null)throw new Error("no encontré el período");
-      const deb=valEtiqueta(ls,/Total\s+del\s+d[eé]bito\s+fiscal/i);
-      const cre=valEtiqueta(ls,/Total\s+del\s+cr[eé]dito\s+fiscal/i);
-      if(deb==null||cre==null)throw new Error("no encontré el débito o el crédito fiscal");
-      const ret=valEtiqueta(ls,/Total\s+de\s+retenciones,\s*percepciones/i)||0;
-      const per=perDeFecha(y,m);
-      if(per<0)throw new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");
-      const c814=cf814DelMes(per);
-      const val={"I.V.A. DÉBITO FISCAL|D":deb,"RETEN. Y PERCEP. I.V.A.|H":ret,
-                 "CREDITO FISCAL DTO 814|H":c814,"D.G.I. I.V.A. CRÉDITO FISCAL|H":cre-c814};
-      const av=[];
-      const chk=getIvaCheck(per);
-      if(chk.vVentas>0&&Math.abs(chk.vVentas-deb)>1)
-        av.push("El débito fiscal del PDF ("+fmtD(deb)+") no coincide con el del asiento de Ventas de ese mes ("+fmtD(chk.vVentas)+").");
-      if(!c814)av.push("No encontré crédito fiscal del DTO 814 en el asiento de sueldos de ese mes, así que el crédito fiscal va entero. Cuando cargues el 814 en Sueldos, este asiento se ajusta solo.");
-      E.imp.prop={origen:"iva",items:[{per,tipo:"POR ASIENTO I.V.A. DEL MES",valores:val,meta:{ddjjCF:cre},
-        nota:"Crédito fiscal de la DDJJ "+fmtD(cre)+" menos DTO 814 "+fmtD(c814)+" = "+fmtD(cre-c814)}]};
-      E.imp.avisos=av;E.imp.acc={};render();
-    }catch(err){impError("No pude leer la DDJJ de IVA: "+err.message);}
-  });
+      it.archivo=files[i].name;
+      leidos.push(it);
+    }catch(err){
+      if(_impTok!==tok)return;
+      errores.push(files[i].name+": "+err.message);
+    }
+  }
+  if(_impTok!==tok)return;
+  E.imp.prog="";
+  armarPropPDF(leidos,errores);
+  render();
 }
-
-// ─── 5. F.931 (PDF) ──────────────────────────────────────────────────────────
-function impArchivo931(input){
-  const f=input.files&&input.files[0];if(!f)return;
-  E.imp.archivo=f.name;E.imp.err="";
-  leerPDF(f,ls=>{
-    try{
-      const mp=ls.join(" | ").match(/(0[1-9]|1[0-2])\/(20\d{2})/);
-      if(!mp)throw new Error("no encontré el período");
-      const codv=c=>{
-        const re=new RegExp("\\b"+c+"\\s*-\\s*[^0-9]{0,60}?(-?\\d{1,3}(?:\\.\\d{3})*,\\d{2})");
-        const l=ls.find(x=>re.test(x));
-        return l?numAR(l.match(re)[1]):0;
-      };
-      const aporSS=codv("301"),aporOS=codv("302"),conSS=codv("351"),conOS=codv("352"),
-            lrt=codv("312"),scvo=codv("028"),renatre=codv("360"),vales=codv("270"),uatre=codv("935");
-      const contrib=conSS+conOS+lrt+scvo+renatre+vales+uatre;
-      const aportes=aporSS+aporOS;
-      if(!contrib&&!aportes)throw new Error("no encontré la sección de montos que se ingresan");
-      // El crédito fiscal del DTO 814 es el 3,80% de la Remuneración 1
-      const rem1=valEtiqueta(ls,/Suma\s+de\s+Rem\.\s*1\s*:/i)||0;
-      const c814=Math.round(rem1*PCT_814)/100;
-      const y=parseInt(mp[2],10),m=parseInt(mp[1],10)-1;
-      const per=perDeFecha(y,m);
-      if(per<0)throw new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");
-      const val={"CARGAS SOCIALES|D":contrib-c814,"CREDITO FISCAL DTO 814|D":c814,
-                 "CARGAS SOCIALES A PAGAR|H":contrib+aportes};
-      E.imp.prop={origen:"f931",items:[{per,tipo:"POR DEVENGAMIENTO DE SUELDOS",valores:val,meta:{ddjjContrib:contrib},
-        nota:"Contribuciones "+fmtD(contrib)+" + aportes retenidos "+fmtD(aportes)+" = "+fmtD(contrib+aportes)+" a pagar &middot; DTO 814 = 3,80% de la Rem. 1 ("+fmtD(rem1)+") = "+fmtD(c814)}]};
-      E.imp.avisos=["Del F.931 salen las cargas sociales y el crédito fiscal del DTO 814 (3,80% de la Remuneración 1). El bruto de Sueldos y Jornales y las retenciones sindicales los cargás del libro de sueldos.",
-        "Si corregís el 814 a mano, Cargas Sociales se ajusta solo para que el total siga siendo "+fmtD(contrib)+"."];
-      E.imp.acc={};render();
-    }catch(err){impError("No pude leer el F.931: "+err.message);}
-  });
-}
+function impArchivoIIBB(input){return impArchivosPDF(input,"iibb");}
+function impArchivoIVA(input){return impArchivosPDF(input,"iva");}
+function impArchivo931(input){return impArchivosPDF(input,"f931");}
 
 // ─── 6. RETENCIONES SUFRIDAS (Excel) ─────────────────────────────────────────
 const RETEN_TIPOS={
@@ -1519,7 +1762,9 @@ function impArchivoReten(input){
       if(om)av.push(om+" filas se omitieron porque no son retenciones (percepciones, devoluciones).");
       if(fuera)av.push(fuera+" certificados quedaron afuera del ejercicio "+ejLabel()+".");
       if(ileg)av.push(ileg+" filas tienen una fecha que no pude interpretar.");
-      av.push("Se carga la línea "+cfg.cuenta+" del asiento de cobro de ventas. Si el asiento no existe todavía, se crea.");
+      av.push("Cada mes va a la línea "+cfg.cuenta+" de su asiento de cobro de ventas. Si el asiento no existe todavía, se crea como parcial. Podés importar por tandas: los meses que no vengan en este archivo no se tocan.");
+      if(Object.keys(CRUCES).some(k=>CRUCES[k].cuenta===cfg.cuenta))
+        av.push("Ojo: "+cfg.cuenta+" se calcula sola en el asiento de cobro. Si importás este archivo, esa línea pasa a carga manual con el importe del Excel (se vuelve a automático con el botón ƒ).");
       E.imp.prop={origen:"reten",items};E.imp.avisos=av;E.imp.acc={};render();
     }catch(err){impError("No pude procesar el archivo: "+err.message);}
   });
@@ -1994,6 +2239,7 @@ function render(){
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v==="empresas"));
   }
   renderCtx();
+  recalcTodos();
   guardarDatos();
   const mes=perLabel(E.mes);
 
@@ -2025,7 +2271,10 @@ function render(){
         <select class="tipo-sel" onchange="chgT('${a.id}',this.value)">`;
       TIPOS.forEach(t=>h+=`<option value="${esc(t)}" ${a.tipo===t?"selected":""}>${esc(t)}</option>`);
       h+=`</select>`;
-      if(dTot>0||hTot>0)h+=`<span class="badge ${cuadra?"gn":"rd"}" style="margin-left:auto">D: ${fmtD(dTot)} | H: ${fmtD(hTot)} ${cuadra?"&#x2713;":"&#x2717;"}</span>`;
+      const esCobro=a.tipo===T_COBRO&&!cobroViejo(a);
+      const ec=esCobro?estadoCobro(a,E.mes):null;
+      if(ec&&ec.parcial&&dTot>0)h+=`<span class="badge am" style="margin-left:auto" title="Falta cargar DEUDORES POR VENTAS en el Haber">Parcial &middot; D: ${fmtD(dTot)} | H: ${fmtD(hTot)}</span>`;
+      else if(dTot>0||hTot>0)h+=`<span class="badge ${cuadra?"gn":"rd"}" style="margin-left:auto">D: ${fmtD(dTot)} | H: ${fmtD(hTot)} ${cuadra?"&#x2713;":"&#x2717;"}</span>`;
       else h+=`<div style="flex:1"></div>`;
       h+=`<button class="btn sm outline-v" onclick="togC('${a.id}')">${a.col?"&#9654;":"&#9660;"}</button>
           <button class="btn sm danger" onclick="delA('${a.id}')">&#x2715;</button>
@@ -2040,6 +2289,43 @@ function render(){
         }
       }
 
+      if(!a.col&&a.tipo===T_COBRO&&cobroViejo(a)){
+        const lDv=a.lineas.find(l=>l.cuenta==="DEUDORES POR VENTAS"&&l.formula);
+        h+=`<div style="padding:8px 14px;background:#fef3c7;border-bottom:1px solid #fde68a;font-size:11px;color:#92400e;display:flex;gap:12px;align-items:center">
+          <span style="flex:1">Este asiento tiene la estructura anterior (Caja a mano y Deudores por Ventas calculado). Al convertirlo, Deudores por Ventas queda fijo en <b>${fmtD(calcFormula(a,lDv))}</b> y pasan a calcularse solas Reten. IIBB, Reten. I.V.A. y Caja.</span>
+          <button class="btn sm" onclick="cobroMigrar('${a.id}')">Pasar a la estructura nueva</button></div>`;
+      }
+      if(!a.col&&a.tipo===T_VENTAS){
+        const dF=detalleCruce("debfisc",E.mes);
+        const lS=ventasSinVincular(a);
+        const lA=a.lineas.find(l=>l.cruce==="debfisc"&&cruceActivo(l));
+        if(lS&&dF.hayOrigen){
+          h+=`<div style="padding:8px 14px;background:#fef3c7;border-bottom:1px solid #fde68a;font-size:11px;color:#92400e;display:flex;gap:12px;align-items:center">
+            <span style="flex:1">El I.V.A. Débito Fiscal de este asiento está cargado a mano (<b>${fmtD(pn(lS.haber))}</b>) y no coincide con el del asiento de I.V.A. del mes (<b>${fmtD(dF.valor)}</b>). Si lo traés de ahí, Caja y Deudores por Ventas se vuelven a repartir.</span>
+            <button class="btn sm" onclick="ventasVincular('${a.id}')">Traerlo del asiento de I.V.A.</button></div>`;
+        }else if(lA){
+          h+=`<div style="padding:7px 14px;background:#faf5ff;border-bottom:1px solid #ede9fe;font-size:11px;color:#4c1d95;line-height:1.7">
+            &#x192; <b>I.V.A. DÉBITO FISCAL</b> = Debe de esa cuenta en el asiento de I.V.A. del mes = <b>${fmtD(dF.valor)}</b>`+
+            (!dF.hayOrigen?` <span style="color:#b45309">&mdash; todavía no está cargado el asiento de I.V.A. de este mes</span>`:"")+`</div>`;
+        }
+      }
+      if(!a.col&&ec){
+        const nomB=b=>b.charAt(0)+b.slice(1).toLowerCase();
+        let fr="";
+        a.lineas.forEach(l=>{
+          if(!cruceActivo(l)||CRUCES[l.cruce].en!==T_COBRO)return;
+          const c=CRUCES[l.cruce],d=detalleCruce(l.cruce,E.mes);
+          const bs=Object.keys(d.bancos).map(b=>nomB(b)+" "+fmtD(d.bancos[b])).join(" &middot; ");
+          fr+=`<div>&#x192; <b>${esc(c.cuenta)}</b> = Haber en ${esc(c.corto)} <b>${fmtD(d.base)}</b> &minus; Debe en egresos bancarios <b>${fmtD(d.egr)}</b>${bs?" ("+bs+")":""} = <b>${fmtD(d.valor)}</b>`+
+            (!d.hayOrigen?` <span style="color:#b45309">&mdash; todavía no está cargado el ${esc(c.corto)} de este mes</span>`:
+             d.dif<0?` <span style="color:#b91c1c">&mdash; &#x26A0; la diferencia da negativa (${fmtD(d.dif)}): queda en cero, revisalo</span>`:"")+`</div>`;
+        });
+        fr+=ec.parcial
+          ?`<div style="color:#b45309">&#x192; <b>CAJA</b> = Deudores por Ventas &minus; retenciones &mdash; falta cargar <b>DEUDORES POR VENTAS</b> en el Haber; hasta entonces el asiento queda parcial.</div>`
+          :`<div>&#x192; <b>CAJA</b> = Deudores por Ventas <b>${fmtD(ec.deud)}</b> &minus; retenciones <b>${fmtD(ec.ret)}</b> = <b>${fmtD(ec.caja)}</b>`+
+            (ec.excede?` <span style="color:#b91c1c">&mdash; &#x26A0; las retenciones superan a Deudores por Ventas en ${fmtD(ec.ret-ec.deud)}</span>`:"")+`</div>`;
+        h+=`<div style="padding:7px 14px;background:#faf5ff;border-bottom:1px solid #ede9fe;font-size:11px;color:#4c1d95;line-height:1.7">${fr}</div>`;
+      }
       if(!a.col){
         h+=`<table class="lt"><thead><tr>
           <th style="width:32px"></th>
@@ -2062,11 +2348,11 @@ function render(){
           const isAC=E.acOpen&&E.acOpen.aid===a.id&&E.acOpen.lid===l.id;
           const acItems=isAC?getAC(l.cuenta):[];
 
-          h+=`<tr style="background:${l.formula?"#faf5ff":l.autoSplit!=null?"#f0f9ff":""}">
-            <td><button class="tb ${l.formula?"formula":isD?"d":isH?"h":"n"}"
-              onclick="flpT('${a.id}','${l.id}')"
-              title="Click para cambiar Debe/Haber">
-              ${l.formula?"&#x192;":isD?"D":isH?"H":"&middot;"}
+          const cz=cruceActivo(l);
+          h+=`<tr style="background:${(l.formula||cz)?"#faf5ff":l.autoSplit!=null?"#f0f9ff":""}">
+            <td><button class="tb ${(l.formula||cz)?"formula":isD?"d":isH?"h":"n"}"
+              ${cz?'disabled title="Línea calculada"':`onclick="flpT('${a.id}','${l.id}')" title="Click para cambiar Debe/Haber"`}>
+              ${(l.formula||cz)?"&#x192;":isD?"D":isH?"H":"&middot;"}
             </button></td>
             <td><div class="ac-wrap">
               <input id="ci_${l.id}" class="ci" value="${esc(l.cuenta)}" placeholder="Cuenta..."
@@ -2102,6 +2388,12 @@ function render(){
           } else if(l.formula&&l._t==="H"){
             h+=`<td><input class="ii d" value="" disabled/></td>`;
             h+=`<td><input class="ii h formula" value="${fmtN(hv)||"auto"}" disabled title="${l.swing?"Calculado (vuelco): solo aparece si queda monto a pagar":"Calculado automáticamente"}"/></td>`;
+          } else if(cz&&CRUCES[l.cruce].lado==="H"){
+            h+=`<td><input class="ii d" value="" disabled/></td>`;
+            h+=`<td><input class="ii h formula" value="${fmtN(pn(l.haber))||"auto"}" disabled title="Se trae sola: Debe de esta cuenta en el ${esc(CRUCES[l.cruce].corto)}. El botón &#x192; la pasa a carga manual."/></td>`;
+          } else if(cz){
+            h+=`<td><input class="ii d formula" value="${fmtN(pn(l.debe))||"auto"}" disabled title="Se calcula sola: Haber en ${esc(CRUCES[l.cruce].corto)} menos Debe en los egresos bancarios. El botón &#x192; la pasa a carga manual."/></td>`;
+            h+=`<td><input class="ii h" value="" disabled/></td>`;
           } else if(l.derivado){
             h+=`<td><input class="ii d formula" value="${l._t==="D"?fmtN(pn(l.debe)):""}" disabled title="Se calcula solo: importe de la DDJJ menos el crédito fiscal del DTO 814"/></td>`;
             h+=`<td><input class="ii h formula" value="${l._t==="H"?fmtN(pn(l.haber)):""}" disabled title="Se calcula solo: importe de la DDJJ menos el crédito fiscal del DTO 814"/></td>`;
@@ -2114,8 +2406,8 @@ function render(){
               onblur="updLRender('${a.id}','${l.id}','haber',this.value)"/></td>`;
           }
           h+=`<td style="text-align:center">
-            <button onclick="togFormula('${a.id}','${l.id}')" title="${l.formula?"Quitar fórmula":"Activar fórmula automática"}"
-              style="background:${l.formula?"#ede9fe":"#f1f5f9"};border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:11px;color:${l.formula?"#5b21b6":"#94a3b8"}">&#x192;</button></td>
+            <button onclick="togFormula('${a.id}','${l.id}')" title="${cz?"Pasar a carga manual":(l.cruce&&!l.formula)?"Volver al cálculo automático":l.formula?"Quitar fórmula":"Activar fórmula automática"}"
+              style="background:${(l.formula||cz)?"#ede9fe":"#f1f5f9"};border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:11px;color:${(l.formula||cz)?"#5b21b6":"#94a3b8"}">&#x192;</button></td>
             <td>${a.lineas.length>1?`<button onclick="delL('${a.id}','${l.id}');render()" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:17px;line-height:1">&#x00D7;</button>`:""}</td>
           </tr>`;
         });
@@ -2597,12 +2889,12 @@ function render(){
     IMP_SUBS.forEach(s=>h+=`<button class="subtab ${sub===s.k?"on":""}" onclick="impSub('${s.k}')">${esc(s.l)}</button>`);
     h+=`</div>`;
 
-    const caja=(titulo,ayuda,acepta,handler,extra)=>`
+    const caja=(titulo,ayuda,acepta,handler,extra,multi)=>`
       <div class="card" style="padding:16px;margin-bottom:12px">
         ${extra||""}
         <div style="font-size:13px;font-weight:700;margin-bottom:6px">${titulo}</div>
         <div class="mini" style="margin-bottom:10px;line-height:1.5">${ayuda}</div>
-        <input type="file" accept="${acepta}" onchange="${handler}(this)">
+        <input type="file" accept="${acepta}" ${multi?"multiple":""} onchange="${handler}(this)">
         ${E.imp.archivo?`<span class="badge bl" style="margin-left:8px">${esc(E.imp.archivo)}</span>`:""}
       </div>`;
 
@@ -2638,18 +2930,18 @@ function render(){
     }
     else if(sub==="iibb"){
       h+=caja("Subí la DDJJ de Ingresos Brutos (PDF)",
-        "Del PDF de la DGR San Juan toma el <b>período</b>, el <b>Total Impuesto Determinado</b> y el <b>Total Retenciones y Percepciones</b>. El vuelco entre «a pagar» y «saldo a favor» lo resuelve la fórmula del asiento. También cruza el saldo a favor del mes anterior contra el que viene arrastrando el sistema.",
-        ".pdf","impArchivoIIBB");
+        "Del PDF de la DGR San Juan toma el <b>período</b>, el <b>Total Impuesto Determinado</b> y el <b>Total Retenciones y Percepciones</b>. El vuelco entre «a pagar» y «saldo a favor» lo resuelve la fórmula del asiento. También cruza el saldo a favor del mes anterior contra el que viene arrastrando el sistema. <b>Podés seleccionar varios PDF a la vez</b> (Ctrl+clic o Shift+clic en la ventana de archivos), incluso mezclados de IIBB, IVA y F.931: cada uno se reconoce solo y va a su mes.",
+        ".pdf","impArchivoIIBB","",true);
     }
     else if(sub==="iva"){
       h+=caja("Subí la DDJJ de IVA (PDF F.2051)",
-        "Toma el <b>débito fiscal</b>, el <b>crédito fiscal</b> y el <b>total de retenciones y percepciones</b>. Como el crédito fiscal de la DDJJ incluye el DTO 814, se le resta el 814 que tengas cargado en el asiento de sueldos de ese mes, y queda vinculado: si después cambiás el 814, el crédito fiscal se ajusta solo.",
-        ".pdf","impArchivoIVA");
+        "Toma el <b>débito fiscal</b>, el <b>crédito fiscal</b> y el <b>total de retenciones y percepciones</b>. Como el crédito fiscal de la DDJJ incluye el DTO 814, se le resta el 814 que tengas cargado en el asiento de sueldos de ese mes, y queda vinculado: si después cambiás el 814, el crédito fiscal se ajusta solo. <b>Podés seleccionar varios PDF a la vez</b> (Ctrl+clic o Shift+clic en la ventana de archivos), incluso mezclados de IIBB, IVA y F.931: cada uno se reconoce solo y va a su mes.",
+        ".pdf","impArchivoIVA","",true);
     }
     else if(sub==="f931"){
       h+=caja("Subí el F.931 (PDF)",
-        "De la sección <b>Montos que se ingresan</b> suma las contribuciones patronales (códigos 351, 352, 312, 028, 360, 270 y 935) y los aportes retenidos al personal (301 y 302). Carga Cargas Sociales al Debe y Cargas Sociales a Pagar al Haber.",
-        ".pdf","impArchivo931");
+        "De la sección <b>Montos que se ingresan</b> suma las contribuciones patronales (códigos 351, 352, 312, 028, 360, 270 y 935) y los aportes retenidos al personal (301 y 302). Carga Cargas Sociales al Debe y Cargas Sociales a Pagar al Haber. <b>Podés seleccionar varios PDF a la vez</b> (Ctrl+clic o Shift+clic en la ventana de archivos), incluso mezclados de IIBB, IVA y F.931: cada uno se reconoce solo y va a su mes.",
+        ".pdf","impArchivo931","",true);
     }
     else if(sub==="reten"){
       let rh=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">1. Qué retención es</div>
@@ -2657,13 +2949,22 @@ function render(){
       Object.keys(RETEN_TIPOS).forEach(k=>rh+=`<button class="btn ${(E.imp.reten||"GANANCIAS")===k?"primary":""} sm" onclick="impSetReten('${k}')">${esc(RETEN_TIPOS[k].label)}</button>`);
       rh+=`</div>`;
       h+=caja("2. Subí el Excel de retenciones sufridas",
-        "Columnas esperadas: una de <b>Fecha</b> y una de <b>Importe</b>; si hay una de <b>Operación</b> o <b>Descripción</b> se toman solo las retenciones y se dejan afuera las percepciones. Totaliza por mes y carga la línea correspondiente del asiento de cobro de ventas en cuenta corriente.",
+        "Columnas esperadas: una de <b>Fecha</b> y una de <b>Importe</b>; si hay una de <b>Operación</b> o <b>Descripción</b> se toman solo las retenciones y se dejan afuera las percepciones. Totaliza por mes y carga cada total en el asiento de cobro de ventas en cuenta corriente de ese mes. Se puede importar por tandas (por ejemplo un listado con seis meses y después otro con los seis restantes): si un mes ya tiene importe, elegís si lo reemplazás, lo sumás o lo dejás como está.",
         ".xlsx,.xls","impArchivoReten",rh);
     }
 
+    if(E.imp.prog){
+      h+=`<div class="card" style="padding:12px 16px;margin-bottom:12px;background:#eff6ff;border-color:#bfdbfe">
+        <div style="font-size:12px;font-weight:700;color:#1e40af">&#x23F3; ${esc(E.imp.prog)}</div></div>`;
+    }
     if(E.imp.err){
       h+=`<div class="card" style="padding:12px 16px;margin-bottom:12px;background:#fee2e2;border-color:#fca5a5">
         <div style="font-size:12px;font-weight:700;color:#991b1b">&#x2717; ${esc(E.imp.err)}</div></div>`;
+    }
+    if(E.imp.errs&&E.imp.errs.length){
+      h+=`<div class="card" style="padding:12px 16px;margin-bottom:12px;background:#fee2e2;border-color:#fca5a5">
+        <div style="font-size:12px;font-weight:700;color:#991b1b;margin-bottom:4px">&#x2717; ${E.imp.errs.length===1?"No pude leer este archivo":"No pude leer "+E.imp.errs.length+" archivos"}${E.imp.prop?" (el resto se puede importar igual)":""}:</div>
+        ${E.imp.errs.map(x=>`<div style="font-size:12px;color:#991b1b;margin-bottom:2px">&bull; ${esc(x)}</div>`).join("")}</div>`;
     }
     if(E.imp.avisos&&E.imp.avisos.length){
       h+=`<div class="card" style="padding:12px 16px;margin-bottom:12px;background:#fef3c7;border-color:#fde68a">
@@ -2675,22 +2976,28 @@ function render(){
       if(!p.items.length){
         h+=`<div class="empty">El archivo se leyó pero no quedó nada para importar en este ejercicio.</div>`;
       }else{
+        const nYa=p.items.filter(impYaHay).length;
         h+=`<div class="toolbar"><h2 style="font-size:14px">Revisá y confirmá</h2>
           <span class="badge bl">${p.items.length} asiento(s)</span>
+          ${nYa>1?`<span class="mini" style="margin-left:8px">Los ${nYa} que ya tienen datos:</span>
+            <button class="btn sm" onclick="impAccTodos('reemplazar')">Reemplazar todos</button>
+            <button class="btn sm" onclick="impAccTodos('otro')">${p.items[0].patch?"Sumar todos":"Agregar todos"}</button>
+            <button class="btn sm" onclick="impAccTodos('omitir')">Omitir todos</button>`:""}
           <div style="flex:1"></div>
           <button class="btn sm" onclick="impCancelar()">Cancelar</button>
           <button class="btn primary sm" onclick="impConfirmar()">&#x2713; Confirmar e importar</button></div>`;
         p.items.forEach((it,idx)=>{
-          const existe=impExiste(it.per,it.tipo);
-          const acc=E.imp.acc[idx]||(existe?(it.patch?"reemplazar":"reemplazar"):"agregar");
+          const existe=impYaHay(it);
+          const acc=E.imp.acc[idx]||(existe?"reemplazar":"agregar");
           h+=`<div class="card"><div class="card-head">
             <span class="badge bl">${esc(perLabel(it.per))}</span>
             <span style="font-size:12px;font-weight:600">${esc(it.tipo)}</span>
+            ${it.archivo?`<span class="mini" title="Archivo de origen">${esc(it.archivo)}</span>`:""}
             <div style="flex:1"></div>`;
           if(existe){
             const op=(v,l)=>`<label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:8px">
               <input type="radio" name="acc${idx}" ${acc===v?"checked":""} onchange="impAcc(${idx},'${v}')"> ${l}</label>`;
-            h+=`<span class="badge am">Ya existe</span>`+
+            h+=`<span class="badge am">${it.patch?"Ya tiene "+fmtD(impPatchActual(it)):"Ya existe"}</span>`+
                op("reemplazar",it.patch?"Reemplazar importe":"Reemplazar")+
                op(it.patch?"sumar":"agregar",it.patch?"Sumar":"Agregar otro")+
                op("omitir","Omitir");
