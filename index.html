@@ -531,7 +531,7 @@ const INSTRUCTIVO=[
    p:["<b>Haber — DEUDORES POR VENTAS:</b> se carga a mano, es el total de la cobranza imputada a la cuenta corriente.",
       "<b>Debe — RETEN. Y PERCEP. IIBB:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de devengamiento de impuestos provinciales y municipales del mes, menos el Debe de esa cuenta en los asientos de egresos bancarios de Santander, Galicia y Credicoop.",
       "<b>Debe — RETEN. Y PERCEP. I.V.A.:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de I.V.A. del mes, menos el Debe de esa cuenta en los asientos de egresos bancarios.",
-      "<b>Debe — RETENCIONES SUSS / RETENCIONES GANANCIAS:</b> se importan desde <b>Importar → Retenciones</b> con el Excel de ARCA. Totaliza por mes y carga cada mes en su asiento; se puede importar por tandas (por ejemplo seis meses y después los otros seis).",
+      "<b>Debe — RETENCIONES SUSS / RETENCIONES GANANCIAS:</b> se importan desde <b>Importar → Retenciones</b> con el Excel de ARCA. Suma todas las filas del archivo (retenciones, percepciones y devoluciones, con su signo), las totaliza por mes según la fecha de retención y carga cada mes en su asiento; se puede importar por tandas (por ejemplo seis meses y después los otros seis).",
       "<b>Debe — CAJA:</b> es ƒ, Deudores por Ventas menos todas las retenciones del Debe.",
       "El asiento se va armando solo: aparece como <b>parcial</b> en cuanto alguna de sus cuentas tiene importe, y cierra cuando cargás Deudores por Ventas.",
       "En las líneas calculadas, el botón ƒ las pasa a carga manual y las vuelve a automático."],
@@ -1763,27 +1763,42 @@ function impArchivoReten(input){
       if(iI<0)iI=H.findIndex(h=>/importe/.test(h));
       const iO=H.findIndex(h=>/operaci/.test(h));
       if(iF<0||iI<0)throw new Error("faltan las columnas de Fecha e Importe");
-      const porPer={};let n=0,om=0,fuera=0,ileg=0;
+      // Se suman todas las filas del archivo, con el signo que traen: retenciones,
+      // percepciones, devoluciones o lo que diga la columna Operación.
+      const porPer={},porOp={};let n=0,fuera=0,ileg=0;
       for(let r=hi+1;r<rows.length;r++){
         const f2=rows[r];if(!f2)continue;
         const v=numExcel(f2[iI]);if(!v)continue;
         const ym=ymCelda(f2[iF]);
         if(!ym){ileg++;continue;}
-        if(iO>=0&&!/retenc/i.test(String(f2[iO]||""))){om++;continue;}
         const per=perDeFecha(ym.y,ym.m);
         if(per<0){fuera++;continue;}
         porPer[per]=(porPer[per]||0)+v;n++;
+        if(iO>=0){
+          const op=String(f2[iO]==null?"":f2[iO]).trim()||"(sin tipo)";
+          const o=porOp[op]=porOp[op]||{n:0,t:0};o.n++;o.t+=v;
+        }
       }
-      const items=Object.keys(porPer).map(Number).sort((a,b)=>a-b).map(per=>({
+      // Un mes que da negativo no se puede cargar al Debe: se deja afuera y se avisa
+      const negativos=[];
+      const items=Object.keys(porPer).map(Number).sort((a,b)=>a-b).filter(per=>{
+        const t=Math.round(porPer[per]*100)/100;
+        if(t<0){negativos.push(perLabel(per)+" ("+fmtD(t)+")");return false;}
+        return true;
+      }).map(per=>({
         per,tipo:"POR COBRO DE VENTAS EN CUENTA CORRIENTE",
         patch:{cuenta:cfg.cuenta,t:"D",monto:porPer[per]},
-        valores:{},nota:"Retenciones de "+cfg.label+" del mes: "+fmtD(porPer[per])
+        valores:{},nota:"Total de "+cfg.label+" del mes: "+fmtD(porPer[per])
       }));
       const av=[];
       if(!fechaExacta&&fechas.length>1)
         av.push("Ojo: no encontré una columna de fecha de retención. El archivo trae "+fechas.length+" columnas de fecha ("+fechas.map(i=>"«"+esc(titulo(i))+"»").join(", ")+") y usé la primera, «"+esc(titulo(iF))+"». Si no es la de retención, no confirmes y avisame cómo se llama la correcta.");
       else av.push("El mes de cada retención se toma de la columna «"+esc(titulo(iF))+"» y el importe de «"+esc(titulo(iI))+"».");
-      if(om)av.push(om+" filas se omitieron porque no son retenciones (percepciones, devoluciones).");
+      const ops=Object.keys(porOp).sort();
+      if(ops.length>1)
+        av.push("Se suman todas las filas, sin distinguir el tipo de operación: "+ops.map(o=>esc(o)+" ("+porOp[o].n+" filas, "+fmtD(porOp[o].t)+")").join(" &middot; ")+". Cada importe entra con el signo que trae el Excel.");
+      if(negativos.length)
+        av.push("Ojo: el total da negativo en "+negativos.join(", ")+". Esos meses no se importan porque no pueden ir al Debe: revisalos y cargalos a mano.");
       if(fuera)av.push(fuera+" certificados quedaron afuera del ejercicio "+ejLabel()+".");
       if(ileg)av.push(ileg+" filas tienen una fecha que no pude interpretar.");
       av.push("Cada mes va a la línea "+cfg.cuenta+" de su asiento de cobro de ventas. Si el asiento no existe todavía, se crea como parcial. Podés importar por tandas: los meses que no vengan en este archivo no se tocan.");
@@ -2973,7 +2988,7 @@ function render(){
       Object.keys(RETEN_TIPOS).forEach(k=>rh+=`<button class="btn ${(E.imp.reten||"GANANCIAS")===k?"primary":""} sm" onclick="impSetReten('${k}')">${esc(RETEN_TIPOS[k].label)}</button>`);
       rh+=`</div>`;
       h+=caja("2. Subí el Excel de retenciones sufridas",
-        "Columnas esperadas: la <b>fecha de retención</b> y el <b>importe</b>; si hay una de <b>Operación</b> se toman solo las retenciones y se dejan afuera las percepciones. El mes sale siempre de la fecha de retención, no de la fecha del comprobante ni de la de registración. Totaliza por mes y carga cada total en el asiento de cobro de ventas en cuenta corriente de ese mes. Se puede importar por tandas (por ejemplo un listado con seis meses y después otro con los seis restantes): si un mes ya tiene importe, elegís si lo reemplazás, lo sumás o lo dejás como está.",
+        "Columnas esperadas: la <b>fecha de retención</b> y el <b>importe</b>; se suman <b>todas las filas</b> del archivo (retenciones, percepciones, devoluciones), cada una con el signo que trae. El mes sale siempre de la fecha de retención, no de la fecha del comprobante ni de la de registración. Totaliza por mes y carga cada total en el asiento de cobro de ventas en cuenta corriente de ese mes. Se puede importar por tandas (por ejemplo un listado con seis meses y después otro con los seis restantes): si un mes ya tiene importe, elegís si lo reemplazás, lo sumás o lo dejás como está.",
         ".xlsx,.xls","impArchivoReten",rh);
     }
 
