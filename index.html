@@ -415,9 +415,9 @@ const PL={
     {n:"SEC A PAGAR",t:"D"},{n:"INACAP A PAGAR",t:"D"},{n:"FAECYS A PAGAR",t:"D"},
     {n:"PROVEEDORES",t:"D"},{n:"CAJA",t:"H",formula:true}],
   "POR DEVENGAMIENTO DE SUELDOS":[
-    {n:"CARGAS SOCIALES",t:"D"},{n:"SUELDOS Y JORNALES",t:"D"},{n:"CREDITO FISCAL DTO 814",t:"D"},
+    {n:"SUELDOS Y JORNALES",t:"D"},{n:"CARGAS SOCIALES",t:"D",formula:true},{n:"CREDITO FISCAL DTO 814",t:"D"},
     {n:"REMUNERACIONES A PAGAR",t:"H"},{n:"CARGAS SOCIALES A PAGAR",t:"H"},
-    {n:"SEC A PAGAR",t:"H"},{n:"INACAP A PAGAR",t:"H"},{n:"FAECYS A PAGAR",t:"H"}],
+    {n:"SEC A PAGAR",t:"H"},{n:"FAECYS A PAGAR",t:"H"}],
   "POR LAS COMPRAS":[
     {n:"COMPRAS",t:"D"},{n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"D"},{n:"SERVICIOS VARIOS",t:"D"},
     {n:"GASTOS VARIOS",t:"D"},{n:"COMBUSTIBLES",t:"D"},{n:"FLETES",t:"D"},
@@ -509,14 +509,15 @@ const INSTRUCTIVO=[
       "<b>Haber — CAJA:</b> es ƒ, total desembolsado."],
    x:"Lo que se pagó por banco no va acá: va en el asiento de egresos bancarios del banco que corresponda."},
   {t:"POR DEVENGAMIENTO DE SUELDOS",
-   o:"Libro de sueldos / resumen de la liquidación del mes y F.931.",
-   p:["<b>Debe — SUELDOS Y JORNALES:</b> total bruto liquidado (remunerativo + no remunerativo).",
-      "<b>Debe — CARGAS SOCIALES:</b> contribuciones patronales del F.931.",
-      "<b>Debe — CREDITO FISCAL DTO 814:</b> el 3,80% de la Remuneración 1 del F.931. Es parte de las contribuciones, así que se descuenta de la línea de Cargas Sociales.",
-      "<b>Haber — REMUNERACIONES A PAGAR:</b> neto a pagar al personal.",
-      "<b>Haber — CARGAS SOCIALES A PAGAR:</b> contribuciones patronales + aportes retenidos al personal.",
-      "<b>Haber — SEC / INACAP / FAECYS:</b> retenciones sindicales del recibo."],
-   x:"Este asiento no tiene línea ƒ: tiene que cuadrar solo. Si el badge del encabezado marca diferencia, casi siempre falta el crédito fiscal del 814 o algún concepto de retención. Las cargas sociales y el 814 se traen del PDF desde <b>Importar → F.931</b>."},
+   o:"F.931, Excel de la liquidación del mes (y del SAC en junio y diciembre), boleta de FAECYS y facturas del SEC.",
+   p:["<b>Debe — SUELDOS Y JORNALES:</b> la <b>Remuneración 9</b> del F.931.",
+      "<b>Debe — CARGAS SOCIALES:</b> es ƒ, la diferencia para que el asiento cierre.",
+      "<b>Debe — CREDITO FISCAL DTO 814:</b> se carga a mano. Como Cargas Sociales es la diferencia, al cargar el 814 Cargas Sociales baja en el mismo importe.",
+      "<b>Haber — REMUNERACIONES A PAGAR:</b> la columna <b>Importe</b> (la última) del Excel de la liquidación. En junio y diciembre se le suma el Importe del Excel del SAC.",
+      "<b>Haber — CARGAS SOCIALES A PAGAR:</b> el total de <b>Montos que se ingresan</b> del F.931 (aportes y contribuciones).",
+      "<b>Haber — FAECYS A PAGAR:</b> el monto total a depositar de la boleta de FAECYS (primer vencimiento).",
+      "<b>Haber — SEC A PAGAR:</b> de las facturas del SEC; por ahora a mano. Si hay retenciones para depositar, se agregan con «+ Agregar línea»."],
+   x:"Todo se puede traer desde <b>Importar → Sueldos</b>: subís juntos el F.931, el Excel del mes, el del SAC y la boleta de FAECYS, y cada uno completa su línea en el asiento de su mes. El SEC, las retenciones y el DTO 814 quedan a mano."},
   {t:"POR LAS COMPRAS",
    o:"Libro I.V.A. Compras del mes.",
    p:["<b>Debe — COMPRAS:</b> mercadería de reventa, por el Total menos el IVA de cada comprobante.",
@@ -1088,7 +1089,7 @@ function copM(){if(E.mes===0)return;const p=E.apm[E.mes-1]||[];setMes(p.map(a=>(
 // mismo tipo en ese período y deja elegir qué hacer.
 const IMP_SUBS=[
   {k:"banco",l:"Banco"},{k:"compras",l:"Compras"},{k:"iibb",l:"IIBB"},
-  {k:"iva",l:"IVA"},{k:"f931",l:"F.931"},{k:"reten",l:"Retenciones"}];
+  {k:"iva",l:"IVA"},{k:"f931",l:"Sueldos"},{k:"reten",l:"Retenciones"}];
 
 const BANCOS_IMPORT={
   SANTANDER:{cuentaBanco:"BANCO SANTANDERCTA. CTE.",tipoIngreso:"POR INGRESOS BANCARIOS - SANTANDER",tipoEgreso:"POR EGRESOS BANCARIOS - SANTANDER",label:"Banco Santander"},
@@ -1139,6 +1140,19 @@ function leerExcel(file,cb){
     }catch(err){impError("No pude leer el Excel: "+err.message);}
   };
   r.readAsArrayBuffer(file);
+}
+function leerExcelP(file){
+  return new Promise((ok,mal)=>{
+    const r=new FileReader();
+    r.onerror=()=>mal(new Error("no pude abrir el archivo"));
+    r.onload=function(ev){
+      try{
+        const wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array",cellDates:true});
+        ok(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}));
+      }catch(err){mal(new Error("no pude leer el Excel ("+err.message+")"));}
+    };
+    r.readAsArrayBuffer(file);
+  });
 }
 // Texto del PDF agrupado en líneas visuales (ordena por fila y por columna)
 function leerPDFp(file){
@@ -1366,23 +1380,64 @@ function cobroMigrar(aid){
 // ─── CONFIRMACIÓN GENÉRICA ───────────────────────────────────────────────────
 function impAcc(i,v){E.imp.acc[i]=v;render();}
 function impExiste(per,tipo){return (E.apm[per]||[]).some(a=>a.tipo===tipo);}
-// Importe que ya tiene cargada la línea que va a tocar un importador de retenciones
+// Algunos importadores no arman el asiento entero sino que completan líneas
+// sueltas de un asiento que se va armando de a partes (retenciones en el cobro
+// de ventas; F.931, Excel de sueldos, SAC y FAECYS en el de sueldos).
+// Cada parte es {cuenta,t,monto} y puede traer "comp": partes que se suman en
+// la misma línea (Remuneraciones a pagar = liquidación del mes + SAC). Cada
+// componente se guarda aparte en el asiento, así reimportar uno no pisa al otro.
+function impPatches(it){return it.patches||(it.patch?[it.patch]:null);}
+function impLineaPatch(a,pt){return a.lineas.find(x=>x.cuenta===pt.cuenta&&x._t===pt.t&&!x.formula);}
+function impValPatch(a,pt){
+  if(pt.comp&&a.remComp)return a.remComp[pt.comp]||0;
+  const l=impLineaPatch(a,pt);
+  return l?pn(pt.t==="D"?l.debe:l.haber):0;
+}
+// Importe que ya tienen cargado las líneas que va a tocar la importación
 function impPatchActual(it){
   const a=(E.apm[it.per]||[]).find(x=>x.tipo===it.tipo);if(!a)return 0;
-  const l=a.lineas.find(x=>x.cuenta===it.patch.cuenta&&x._t===it.patch.t&&!x.formula);
-  return l?pn(it.patch.t==="D"?l.debe:l.haber):0;
+  return impPatches(it).reduce((s,pt)=>s+impValPatch(a,pt),0);
 }
-// ¿Hay algo cargado que esta importación pisaría? En las retenciones lo que
-// importa es si la línea ya tiene importe, no si el asiento existe (el asiento
-// de cobro se va armando de a partes).
-function impYaHay(it){return it.patch?impPatchActual(it)>0.004:impExiste(it.per,it.tipo);}
+// ¿Hay algo cargado que esta importación pisaría? Cuando se completan líneas
+// sueltas lo que importa es si esas líneas ya tienen importe, no si el asiento existe.
+function impYaHay(it){return impPatches(it)?impPatchActual(it)>0.004:impExiste(it.per,it.tipo);}
 function impAccTodos(v){
   const p=E.imp.prop;if(!p)return;
   p.items.forEach((it,idx)=>{
     if(!impYaHay(it))return;
-    E.imp.acc[idx]=v==="otro"?(it.patch?"sumar":"agregar"):v;
+    E.imp.acc[idx]=v==="otro"?(impPatches(it)?"sumar":"agregar"):v;
   });
   render();
+}
+// Asientos de sueldos armados con el importador anterior: Cargas Sociales era
+// un importe fijo (contribuciones menos 814). Pasa a ser la línea ƒ de cierre.
+function sueldosMigrar(a){
+  if(a.tipo!==T_SUELDOS)return;
+  delete a.ddjjContrib;
+  const lc=a.lineas.find(l=>l.cuenta==="CARGAS SOCIALES"&&l._t==="D");
+  if(lc){lc.formula=true;lc.debe="";lc.haber="";lc.derivado=false;}
+  a.lineas=a.lineas.filter(l=>!(l.cuenta==="INACAP A PAGAR"&&!pn(l.debe)&&!pn(l.haber)));
+}
+function impAplicarPatch(a,pt,acc){
+  let l=impLineaPatch(a,pt);
+  if(!l){
+    l={id:nid(),cuenta:pt.cuenta,codigo:cod(pt.cuenta),ccodigo:ccod(pt.cuenta),
+       debe:"",haber:"",_t:pt.t,formula:false,autoSplit:null,swing:null,cruce:null};
+    const iC=a.lineas.findIndex(x=>x.cuenta==="DEUDORES POR VENTAS"&&x._t==="H");
+    if(iC>=0)a.lineas.splice(iC,0,l);else a.lineas.push(l);
+  }
+  const campo=pt.t==="D"?"debe":"haber";
+  let v;
+  if(pt.comp){
+    // Si la línea tenía un importe cargado a mano, al sumar se conserva como "otros"
+    if(!a.remComp)a.remComp=acc==="sumar"&&pn(l[campo])?{otros:pn(l[campo])}:{};
+    a.remComp[pt.comp]=(acc==="sumar"?(a.remComp[pt.comp]||0):0)+pt.monto;
+    v=Object.keys(a.remComp).reduce((s,k)=>s+a.remComp[k],0);
+  }else v=(acc==="sumar"?pn(l[campo]):0)+pt.monto;
+  l[campo]=numStr(v);
+  l[pt.t==="D"?"haber":"debe"]="";
+  // Un importe importado manda sobre el cálculo automático de esa línea
+  if(l.cruce)l.cruceOff=true;
 }
 function impConfirmar(){
   const p=E.imp.prop;if(!p||!p.items.length)return;
@@ -1391,22 +1446,11 @@ function impConfirmar(){
     const acc=E.imp.acc[idx]||(impYaHay(it)?"reemplazar":"agregar");
     if(acc==="omitir")return;
     const lista=[...(E.apm[it.per]||[])];
-    if(it.patch){
+    if(impPatches(it)){
       let a=lista.find(x=>x.tipo===it.tipo);
       if(!a){a=crA(it.tipo);lista.push(a);}
-      let l=a.lineas.find(x=>x.cuenta===it.patch.cuenta&&x._t===it.patch.t&&!x.formula);
-      if(!l){
-        l={id:nid(),cuenta:it.patch.cuenta,codigo:cod(it.patch.cuenta),ccodigo:ccod(it.patch.cuenta),
-           debe:"",haber:"",_t:it.patch.t,formula:false,autoSplit:null,swing:null,cruce:null};
-        const iC=a.lineas.findIndex(x=>x.cuenta==="DEUDORES POR VENTAS"&&x._t==="H");
-        if(iC>=0)a.lineas.splice(iC,0,l);else a.lineas.push(l);
-      }
-      const campo=it.patch.t==="D"?"debe":"haber";
-      const base=acc==="sumar"?pn(l[campo]):0;
-      l[campo]=numStr(base+it.patch.monto);
-      l[it.patch.t==="D"?"haber":"debe"]="";
-      // Un importe importado manda sobre el cálculo automático de esa línea
-      if(l.cruce)l.cruceOff=true;
+      sueldosMigrar(a);
+      impPatches(it).forEach(pt=>impAplicarPatch(a,pt,acc));
     }else{
       const a=buildDesdePlantilla(it.tipo,it.valores,it.meta);
       const i=lista.findIndex(x=>x.tipo===it.tipo);
@@ -1578,7 +1622,7 @@ function construirCompras(){
 const T_IIBB="POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES";
 const T_IVA="POR ASIENTO I.V.A. DEL MES";
 const T_SUELDOS="POR DEVENGAMIENTO DE SUELDOS";
-const PDF_TIPOS={iibb:"DDJJ de Ingresos Brutos",iva:"DDJJ de IVA",f931:"F.931"};
+const PDF_TIPOS={iibb:"DDJJ de Ingresos Brutos",iva:"DDJJ de IVA",f931:"F.931",faecys:"boleta de FAECYS",sueldo:"Excel de sueldos",sac:"Excel del SAC"};
 function fueraDeEj(y,m){return new Error("el período "+MESES[m]+" "+y+" no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+")");}
 
 function parseIIBB(ls){
@@ -1618,7 +1662,8 @@ function parseIVA(ls){
     meta:{ddjjCF:cre},x:{deb,cre,ret},nota:""};
 }
 function parse931(ls){
-  const mp=ls.join(" | ").match(/(0[1-9]|1[0-2])\/(20\d{2})/);
+  const txt=ls.join(" | ");
+  const mp=txt.match(/(0[1-9]|1[0-2])\/(20\d{2})/);
   if(!mp)throw new Error("no encontré el período");
   const codv=c=>{
     const re=new RegExp("\\b"+c+"\\s*-\\s*[^0-9]{0,60}?(-?\\d{1,3}(?:\\.\\d{3})*,\\d{2})");
@@ -1630,42 +1675,134 @@ function parse931(ls){
   const contrib=conSS+conOS+lrt+scvo+renatre+vales+uatre;
   const aportes=aporSS+aporOS;
   if(!contrib&&!aportes)throw new Error("no encontré la sección de montos que se ingresan");
-  // El crédito fiscal del DTO 814 es el 3,80% de la Remuneración 1
-  const rem1=valEtiqueta(ls,/Suma\s+de\s+Rem\.\s*1\s*:/i)||0;
-  const c814=Math.round(rem1*PCT_814)/100;
+  // El importe de la Rem. 9 a veces queda en el renglón de abajo de la etiqueta
+  const rem9=valEtiqueta(ls,/Suma\s+de\s+Rem\.\s*9\s*:/i);
+  if(!rem9)throw new Error("no encontré la Remuneración 9");
   const y=parseInt(mp[2],10),m=parseInt(mp[1],10)-1;
   const per=perDeFecha(y,m);
   if(per<0)throw fueraDeEj(y,m);
-  const val={"CARGAS SOCIALES|D":contrib-c814,"CREDITO FISCAL DTO 814|D":c814,
-             "CARGAS SOCIALES A PAGAR|H":contrib+aportes};
-  return{k:"f931",per,tipo:T_SUELDOS,valores:val,meta:{ddjjContrib:contrib},x:{contrib,aportes,rem1,c814},
-    nota:"Contribuciones "+fmtD(contrib)+" + aportes retenidos "+fmtD(aportes)+" = "+fmtD(contrib+aportes)+" a pagar &middot; DTO 814 = 3,80% de la Rem. 1 ("+fmtD(rem1)+") = "+fmtD(c814)};
+  return{k:"f931",per,tipo:T_SUELDOS,
+    patches:[{cuenta:"SUELDOS Y JORNALES",t:"D",monto:rem9},{cuenta:"CARGAS SOCIALES A PAGAR",t:"H",monto:contrib+aportes}],
+    x:{rem9,contrib,aportes},
+    nota:"F.931 &middot; Sueldos y Jornales = Remuneración 9 ("+fmtD(rem9)+") &middot; Cargas Sociales a Pagar = montos que se ingresan: aportes "+fmtD(aportes)+" + contribuciones "+fmtD(contrib)+" = "+fmtD(contrib+aportes)};
 }
-const PDF_PARSERS={iibb:parseIIBB,iva:parseIVA,f931:parse931};
+// Boleta de FAECYS (DDJJ de aportes sindicales, la que genera el sitio de FAECYS).
+// Los importes vienen sin separador de miles ("175950,93").
+function numsLibres(l){return String(l||"").match(/-?\d[\d.]*,\d{2}\b/g)||[];}
+function parseFAECYS(ls){
+  const txt=ls.join(" | ");
+  const mp=txt.match(/PER[IÍ]ODO\s*:?\s*(0[1-9]|1[0-2])\/(20\d{2})/i)||txt.match(/\b(0[1-9]|1[0-2])\/(20\d{2})\b/);
+  if(!mp)throw new Error("no encontré el período de la boleta");
+  let monto=null;
+  const iv=ls.findIndex(l=>/Primer\s+Vto/i.test(l));
+  if(iv>=0){
+    for(let j=iv;j<Math.min(iv+2,ls.length)&&monto===null;j++){
+      const n=numsLibres(ls[j].replace(/\d{1,2}\/\d{1,2}\/\d{4}/g," "));
+      if(n.length)monto=numAR(n[n.length-1]);
+    }
+  }
+  if(monto===null){
+    const it=ls.findIndex(l=>/TOTAL\s+APORTE/i.test(l));
+    if(it>=0){const n=numsLibres(ls[it]);if(n.length)monto=numAR(n[n.length-1]);}
+  }
+  if(!monto)throw new Error("no encontré el monto total a depositar");
+  const y=parseInt(mp[2],10),m=parseInt(mp[1],10)-1;
+  const per=perDeFecha(y,m);
+  if(per<0)throw fueraDeEj(y,m);
+  return{k:"faecys",per,tipo:T_SUELDOS,patches:[{cuenta:"FAECYS A PAGAR",t:"H",monto}],x:{monto},
+    nota:"Boleta FAECYS &middot; monto total a depositar al primer vencimiento"};
+}
+// Excel de la liquidación (mensual o SAC). Hay dos formatos: el listado de una
+// fila por empleado y el reporte "Planilla de Pagos" (tres filas por empleado y
+// totales al pie). En los dos se busca la columna "Importe" y se suman los
+// empleados uno por uno: no se usa el total del pie, porque algunos archivos
+// traen celdas sueltas con totales repetidos.
+const MESES_RE=["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+function parseSueldosExcel(rows){
+  const txtCel=v=>String(v==null?"":v).trim();
+  const norm=v=>txtCel(v).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+  const hr=rows.findIndex(r=>r&&r.some(c=>norm(c)==="importe"));
+  if(hr<0)throw new Error("no encontré la columna «Importe»");
+  const H=rows[hr].map(norm);
+  const iImp=H.indexOf("importe");
+  const iRem=H.indexOf("remunerativos"),iNoR=H.indexOf("no remunerativos"),iRet=H.indexOf("retenciones");
+  const iLeg=H.findIndex(h=>/^legajo/.test(h));
+  // Período y si es SAC: del texto de la liquidación ("MES DE MARZO 2026",
+  // "SAC PRIMERA CUOTA 2026"); si no aparece, de la fecha de liquidación.
+  let y=null,m=null,sac=false,texto="";
+  for(const r of rows){
+    for(const c of (r||[])){
+      const t=txtCel(c).toUpperCase();
+      if(/\bSAC\b|AGUINALDO/.test(t)&&/20\d{2}/.test(t)){
+        sac=true;texto=t;y=parseInt(t.match(/20\d{2}/)[0],10);m=/SEGUND/.test(t)?11:5;break;
+      }
+      const mm=t.match(/MES\s+DE\s+([A-ZÁÉÍÓÚ]+)\s+(20\d{2})/);
+      if(mm){const k=MESES_RE.indexOf(mm[1].normalize("NFD").replace(/[̀-ͯ]/g,""));if(k>=0){texto=t;y=parseInt(mm[2],10);m=k;break;}}
+    }
+    if(y!==null)break;
+  }
+  if(y===null){
+    for(const r of rows){const c=(r||[]).find(v=>v instanceof Date);if(c){const f=ymCelda(c);if(f){y=f.y;m=f.m;}break;}}
+  }
+  if(y===null)throw new Error("no encontré el mes de la liquidación");
+  let total=0,n=0,descuadre=0,totPie=null;
+  for(let i=hr+1;i<rows.length;i++){
+    const r=rows[i];if(!r)continue;
+    const esTotal=r.some(c=>/^total/i.test(txtCel(c)));
+    const v=r[iImp];
+    if(typeof v!=="number"&&!(typeof v==="string"&&/\d/.test(v)))continue;
+    const imp=numExcel(v);if(!imp)continue;
+    if(esTotal){if(totPie===null)totPie=imp;continue;}
+    if(iLeg>=0&&txtCel(r[iLeg])==="")continue; // pie o celdas sueltas sin legajo
+    total+=imp;n++;
+    if(iRem>=0&&iNoR>=0&&iRet>=0){
+      const c=numExcel(r[iRem])+numExcel(r[iNoR])-numExcel(r[iRet]);
+      if(Math.abs(c-imp)>1)descuadre++;
+    }
+  }
+  if(!n)throw new Error("no encontré empleados con importe");
+  total=Math.round(total*100)/100;
+  const per=perDeFecha(y,m);
+  if(per<0)throw fueraDeEj(y,m);
+  return{k:sac?"sac":"sueldo",per,tipo:T_SUELDOS,
+    patches:[{cuenta:"REMUNERACIONES A PAGAR",t:"H",monto:total,comp:sac?"sac":"mensual"}],
+    x:{total,n,descuadre,totPie,texto},
+    nota:(sac?"Excel del SAC":"Excel de la liquidación")+(texto?" ("+esc(texto)+")":"")+" &middot; "+n+" empleados &middot; suma de la columna Importe"};
+}
+const PDF_PARSERS={iibb:parseIIBB,iva:parseIVA,f931:parse931,faecys:parseFAECYS};
 // Reconoce qué formulario es por sus etiquetas, así se pueden subir mezclados.
 function detectarPDF(ls){
   const t=ls.join(" | ");
   if(/Total\s+Impuesto\s+Determinado/i.test(t))return "iibb";
   if(/Total\s+del\s+d[eé]bito\s+fiscal/i.test(t))return "iva";
   if(/Suma\s+de\s+Rem\.\s*1/i.test(t)||/\b35[12]\s*-\s*\D/.test(t))return "f931";
+  if(/FAECYS|EMPLEADOS\s+DE\s+COMERCIO/i.test(t)&&/APORTE\s+DEL\s+0[.,]5/i.test(t))return "faecys";
   return null;
 }
 // Con todos los PDF leídos: ordena, saca repetidos y cruza los controles entre
 // sí (el 814 del F.931 contra el IVA, el saldo a favor de IIBB mes contra mes).
 function armarPropPDF(leidos,errores){
-  const porClave={},av=[];
+  const porClave={},av=[],dobles={};
   leidos.forEach(it=>{
-    const k=it.per+"|"+it.tipo;
-    if(porClave[k])av.push("Hay más de un PDF de "+PDF_TIPOS[it.k]+" para "+perLabel(it.per)+" ("+esc(porClave[k].archivo)+" y "+esc(it.archivo)+"): se toma el último. Si es una rectificativa, revisá que sea la correcta.");
+    const k=it.per+"|"+it.tipo+(it.tipo===T_SUELDOS?"|"+it.k:"");
+    if(porClave[k]){
+      // Dos Excel de sueldos del mismo mes: no se elige por el nombre, porque
+      // el orden alfabético no dice cuál es el bueno. Se deja afuera y se avisa.
+      if(it.k==="sueldo"||it.k==="sac"){(dobles[k]=dobles[k]||[porClave[k].archivo]).push(it.archivo);}
+      else av.push("Hay más de un archivo de "+PDF_TIPOS[it.k]+" para "+perLabel(it.per)+" ("+esc(porClave[k].archivo)+" y "+esc(it.archivo)+"): se toma el último. Si es una rectificativa, revisá que sea la correcta.");
+    }
     porClave[k]=it;
   });
-  const ORD={f931:0,iva:1,iibb:2};
+  Object.keys(dobles).forEach(k=>{
+    const it=porClave[k];delete porClave[k];
+    errores.push(perLabel(it.per)+": subiste "+dobles[k].length+" archivos de "+PDF_TIPOS[it.k]+" ("+dobles[k].join(", ")+"). No importé ninguno: volvé a subir solo el correcto.");
+  });
+  const ORD={f931:0,sueldo:1,sac:2,faecys:3,iva:4,iibb:5};
   const items=Object.keys(porClave).map(k=>porClave[k]).sort((a,b)=>a.per-b.per||ORD[a.k]-ORD[b.k]);
   const pre=it=>items.length>1?perLabel(it.per)+": ":"";
   items.forEach(it=>{
     if(it.k==="iva"){
-      const s931=porClave[it.per+"|"+T_SUELDOS];
-      const c814=s931?s931.x.c814:cf814DelMes(it.per);
+      const c814=cf814DelMes(it.per);
       it.valores["CREDITO FISCAL DTO 814|H"]=c814;
       it.valores["D.G.I. I.V.A. CRÉDITO FISCAL|H"]=it.x.cre-c814;
       it.nota="Crédito fiscal de la DDJJ "+fmtD(it.x.cre)+" menos DTO 814 "+fmtD(c814)+" = "+fmtD(it.x.cre-c814);
@@ -1685,11 +1822,20 @@ function armarPropPDF(leidos,errores){
         av.push(pre(it)+"el monto a ingresar del PDF es "+fmtD(it.x.aIng)+" y de estos datos sale "+fmtD(it.x.neto)+".");
     }
   });
-  const f931=items.filter(it=>it.k==="f931");
-  if(f931.length){
-    av.push("Del F.931 salen las cargas sociales y el crédito fiscal del DTO 814 (3,80% de la Remuneración 1). El bruto de Sueldos y Jornales y las retenciones sindicales los cargás del libro de sueldos.");
-    av.push("Si corregís el 814 a mano, Cargas Sociales se ajusta solo para que el total de contribuciones no cambie.");
-  }
+  items.forEach(it=>{
+    if(it.k==="sueldo"||it.k==="sac"){
+      if(it.x.descuadre)av.push(pre(it)+esc(it.archivo)+": en "+it.x.descuadre+" empleado(s) Remunerativos + No Remunerativos − Retenciones no da el Importe. Se toma el Importe igual.");
+      if(it.x.totPie!=null&&Math.abs(it.x.totPie-it.x.total)>1)av.push(pre(it)+esc(it.archivo)+": la suma de los empleados ("+fmtD(it.x.total)+") no coincide con el total del pie del Excel ("+fmtD(it.x.totPie)+"). Se toma la suma de los empleados.");
+    }
+  });
+  const meses=[...new Set(items.filter(it=>it.tipo===T_SUELDOS).map(it=>it.per))];
+  meses.forEach(per=>{
+    const m=perYM(per).m;
+    const tiene=k=>items.some(it=>it.per===per&&it.k===k);
+    if((m===5||m===11)&&tiene("sueldo")&&!tiene("sac")&&!dobles[per+"|"+T_SUELDOS+"|sac"]&&!(E.apm[per]||[]).some(a=>a.tipo===T_SUELDOS&&a.remComp&&a.remComp.sac))
+      av.push(perLabel(per)+": es mes de SAC y no subiste el Excel del aguinaldo. Si lo subís después, se suma a Remuneraciones a Pagar.");
+  });
+  if(meses.length)av.push("En el asiento de sueldos Cargas Sociales es la diferencia. El SEC, el DTO 814 y las retenciones se cargan a mano en el asiento.");
   E.imp.errs=errores;
   E.imp.prop=items.length?{origen:"pdf",items}:null;
   E.imp.avisos=av;E.imp.acc={};
@@ -1704,17 +1850,27 @@ async function impArchivosPDF(input,sub){
   E.imp.archivo=files.length===1?files[0].name:files.length+" archivos";
   const leidos=[],errores=[];
   for(let i=0;i<files.length;i++){
-    E.imp.prog="Leyendo PDF "+(i+1)+" de "+files.length+": "+files[i].name;
+    E.imp.prog="Leyendo archivo "+(i+1)+" de "+files.length+": "+files[i].name;
     render();
     try{
+      if(/\.xlsx?$/i.test(files[i].name)){
+        // Excel de la liquidación de sueldos o del SAC
+        const rows=await leerExcelP(files[i]);
+        if(_impTok!==tok)return;
+        const it=parseSueldosExcel(rows);
+        it.archivo=files[i].name;
+        leidos.push(it);
+        continue;
+      }
       const ls=await leerPDFp(files[i]);
       if(_impTok!==tok)return;
+      if(!ls.length)throw new Error("el PDF no tiene texto, es una imagen escaneada. Bajá el PDF original del sitio (el que genera la web, no el escaneado) o cargá el importe a mano");
       const k=detectarPDF(ls);
       let it;
       try{it=PDF_PARSERS[k||sub](ls);}
       catch(e2){
         if(k)throw e2;
-        throw new Error("no lo reconozco como DDJJ de Ingresos Brutos, DDJJ de IVA ni F.931 ("+e2.message+")");
+        throw new Error("no lo reconozco como DDJJ de Ingresos Brutos, DDJJ de IVA, F.931 ni boleta de FAECYS ("+e2.message+")");
       }
       it.archivo=files[i].name;
       leidos.push(it);
@@ -2978,9 +3134,14 @@ function render(){
         ".pdf","impArchivoIVA","",true);
     }
     else if(sub==="f931"){
-      h+=caja("Subí el F.931 (PDF)",
-        "De la sección <b>Montos que se ingresan</b> suma las contribuciones patronales (códigos 351, 352, 312, 028, 360, 270 y 935) y los aportes retenidos al personal (301 y 302). Carga Cargas Sociales al Debe y Cargas Sociales a Pagar al Haber. <b>Podés seleccionar varios PDF a la vez</b> (Ctrl+clic o Shift+clic en la ventana de archivos), incluso mezclados de IIBB, IVA y F.931: cada uno se reconoce solo y va a su mes.",
-        ".pdf","impArchivo931","",true);
+      h+=caja("Subí los archivos de sueldos del mes",
+        "Cada archivo completa su línea del asiento <b>Por devengamiento de sueldos</b> de su mes:"+
+        "<br>&bull; <b>F.931 (PDF)</b>: Sueldos y Jornales al Debe con la <b>Remuneración 9</b>, y Cargas Sociales a Pagar al Haber con el total de <b>Montos que se ingresan</b>."+
+        "<br>&bull; <b>Excel de la liquidación</b>: Remuneraciones a Pagar con la suma de la columna <b>Importe</b>."+
+        "<br>&bull; <b>Excel del SAC</b> (junio y diciembre): se suma a Remuneraciones a Pagar del mismo mes."+
+        "<br>&bull; <b>Boleta de FAECYS (PDF)</b>: FAECYS a Pagar con el monto total a depositar (primer vencimiento). Tiene que ser el PDF que baja de la web, no uno escaneado."+
+        "<br>Cargas Sociales es la diferencia. El SEC, el DTO 814 y las retenciones se cargan a mano en el asiento. <b>Podés seleccionar todos los archivos juntos</b>, de uno o varios meses.",
+        ".pdf,.xlsx,.xls","impArchivo931","",true);
     }
     else if(sub==="reten"){
       let rh=`<div style="font-size:13px;font-weight:700;margin-bottom:8px">1. Qué retención es</div>
@@ -3020,7 +3181,7 @@ function render(){
           <span class="badge bl">${p.items.length} asiento(s)</span>
           ${nYa>1?`<span class="mini" style="margin-left:8px">Los ${nYa} que ya tienen datos:</span>
             <button class="btn sm" onclick="impAccTodos('reemplazar')">Reemplazar todos</button>
-            <button class="btn sm" onclick="impAccTodos('otro')">${p.items[0].patch?"Sumar todos":"Agregar todos"}</button>
+            <button class="btn sm" onclick="impAccTodos('otro')">${impPatches(p.items[0])?"Sumar todos":"Agregar todos"}</button>
             <button class="btn sm" onclick="impAccTodos('omitir')">Omitir todos</button>`:""}
           <div style="flex:1"></div>
           <button class="btn sm" onclick="impCancelar()">Cancelar</button>
@@ -3036,9 +3197,10 @@ function render(){
           if(existe){
             const op=(v,l)=>`<label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:8px">
               <input type="radio" name="acc${idx}" ${acc===v?"checked":""} onchange="impAcc(${idx},'${v}')"> ${l}</label>`;
-            h+=`<span class="badge am">${it.patch?"Ya tiene "+fmtD(impPatchActual(it)):"Ya existe"}</span>`+
-               op("reemplazar",it.patch?"Reemplazar importe":"Reemplazar")+
-               op(it.patch?"sumar":"agregar",it.patch?"Sumar":"Agregar otro")+
+            const pp=!!impPatches(it);
+            h+=`<span class="badge am">${pp?"Ya tiene "+fmtD(impPatchActual(it)):"Ya existe"}</span>`+
+               op("reemplazar",pp?"Reemplazar importe":"Reemplazar")+
+               op(pp?"sumar":"agregar",pp?"Sumar":"Agregar otro")+
                op("omitir","Omitir");
           }else h+=`<span class="badge gn">Nuevo</span>`;
           h+=`</div>`;
@@ -3046,10 +3208,12 @@ function render(){
           h+=`<table class="ct" style="font-size:12px"><thead><tr>
             <th style="width:40px">D/H</th><th>Cuenta</th><th style="width:160px;text-align:right">Importe</th>
           </tr></thead><tbody>`;
-          if(it.patch){
-            h+=`<tr><td><span class="badge gn">${it.patch.t}</span></td>
-              <td>${esc(it.patch.cuenta)}</td>
-              <td style="text-align:right;font-family:monospace">${fmtD(it.patch.monto)}</td></tr>`;
+          if(impPatches(it)){
+            impPatches(it).forEach(pt=>{
+              h+=`<tr><td><span class="badge ${pt.t==="D"?"gn":"am"}">${pt.t}</span></td>
+                <td>${esc(pt.cuenta)}</td>
+                <td style="text-align:right;font-family:monospace;color:${pt.t==="D"?"#059669":"#b45309"}">${fmtD(pt.monto)}</td></tr>`;
+            });
           }else{
             const ks=Object.keys(it.valores);
             ks.sort((a,b)=>{const la=a.slice(a.lastIndexOf("|")+1),lb=b.slice(b.lastIndexOf("|")+1);return la===lb?a.localeCompare(b):(la==="D"?-1:1);});
