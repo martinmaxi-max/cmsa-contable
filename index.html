@@ -1015,7 +1015,7 @@ function delL(aid,lid){setMes(getMes().map(a=>a.id===aid?{...a,lineas:a.lineas.f
 
 function updLSilent(aid,lid,f,v){
   const list=getMes();
-  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;l[f]=v;if(f==="cuenta"){l.codigo=cod(v);l.ccodigo=ccod(v);if(l.cruce&&CRUCES[l.cruce]&&CRUCES[l.cruce].cuenta!==v)l.cruce=null;}if(f==="debe"&&v){l.haber="";}if(f==="haber"&&v){l.debe="";}return;}}
+  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;const cambio=l[f]!==v;l[f]=v;if(f==="cuenta"&&cambio){l.codigo=cod(v);l.ccodigo=ccod(v);l.ccManual=false;if(l.cruce&&CRUCES[l.cruce]&&CRUCES[l.cruce].cuenta!==v)l.cruce=null;}if(f==="debe"&&v){l.haber="";}if(f==="haber"&&v){l.debe="";}return;}}
 }
 function updLRender(aid,lid,f,v){
   updLSilent(aid,lid,f,v);
@@ -1067,10 +1067,34 @@ function resetAutoSplit(aid){
   a.manualAuto=null;recalcAutoSplit(aid);render();
 }
 
-// Actualizar código chino de una línea
+function ctaBlur(aid,lid){
+  E.acOpen=null;
+  const v=document.getElementById("ci_"+lid)?.value||"";
+  const ini=E.ctaIni&&E.ctaIni.lid===lid?E.ctaIni.v:null;
+  E.ctaIni=null;
+  if(ini!==null&&v===ini){document.getElementById("acl_"+lid)?.remove();document.querySelector(`#ci_${lid}`)?.parentElement?.querySelector(".ac-list")?.remove();return;}
+  updLRender(aid,lid,"cuenta",v);
+}
+// Código chino de una línea. Si la cuenta no tiene código chino en el Plan de
+// Cuentas, se le asigna ahí también (así vale para todos los asientos y meses).
+// Si ya tenía uno, el cambio queda solo para esta línea.
 function updCC(aid,lid,v){
   const list=getMes();
-  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;l.ccodigo=v;l.ccManual=true;return;}}
+  for(const a of list){if(a.id!==aid)continue;for(const l of a.lineas){if(l.id!==lid)continue;
+    const m=MC.find(x=>x.n===l.cuenta);
+    if(m&&(!m.cc||m.cc==="XXXXX")&&v!=="XXXXX"){m.cc=v;DB.cuentas=MC;l.ccManual=false;sincronizarCodigos();}
+    else{l.ccodigo=v;l.ccManual=true;}
+    render();return;}}
+}
+// Código propio: es de la cuenta, así que se cambia en el Plan de Cuentas y se
+// actualiza en todas las líneas que la usan.
+function editCod(aid,lid){
+  const a=getMes().find(x=>x.id===aid);const l=a&&a.lineas.find(x=>x.id===lid);if(!l||!l.cuenta)return;
+  const m=MC.find(x=>x.n===l.cuenta);
+  if(!m){alert("La cuenta \""+l.cuenta+"\" no está en el Plan de Cuentas. Dala de alta ahí primero.");return;}
+  const nv=prompt("Código propio de la cuenta \""+m.n+"\".\nSe cambia en el Plan de Cuentas y en todos los asientos que la usan.",m.c&&m.c!=="XXXXX"?m.c:"");
+  if(nv===null)return;
+  ctaUpd(m.n,"c",nv);
 }
 
 function flpT(aid,lid){
@@ -2642,8 +2666,8 @@ function render(){
             <td><div class="ac-wrap">
               <input id="ci_${l.id}" class="ci" value="${esc(l.cuenta)}" placeholder="Cuenta..."
                 oninput="updLSilent('${a.id}','${l.id}','cuenta',this.value);E.acOpen={aid:'${a.id}',lid:'${l.id}'};renderAConly('${l.id}',this.value)"
-                onfocus="E.acOpen={aid:'${a.id}',lid:'${l.id}'};renderAConly('${l.id}',this.value)"
-                onblur="setTimeout(()=>{E.acOpen=null;updLRender('${a.id}','${l.id}','cuenta',document.getElementById('ci_${l.id}')?.value||'');},200)"/>`;
+                onfocus="E.acOpen={aid:'${a.id}',lid:'${l.id}'};E.ctaIni={lid:'${l.id}',v:this.value};renderAConly('${l.id}',this.value)"
+                onblur="setTimeout(()=>ctaBlur('${a.id}','${l.id}'),200)"/>`;
           if(isAC&&acItems.length){
             h+=`<div class="ac-list" id="acl_${l.id}">`;
             acItems.forEach(it=>h+=`<div class="ac-it ${it===l.cuenta?"sel":""}" onmousedown="updLRender('${a.id}','${l.id}','cuenta','${esc(it)}')">${esc(it)}</div>`);
@@ -2657,7 +2681,7 @@ function render(){
             </div>`;
           }
           h+=`</div></td>
-            <td style="text-align:center"><span class="badge ${cid==="XXXXX"||!cid?"am":"bl"}">${cid||"&mdash;"}</span></td>`;
+            <td style="text-align:center"><span class="badge ${cid==="XXXXX"||!cid?"am":"bl"}" style="cursor:pointer" title="Click para cambiar el código de esta cuenta en el Plan de Cuentas" onclick="editCod('${a.id}','${l.id}')">${cid||"&mdash;"}</span></td>`;
 
           // Selector código chino
           h+=`<td><select class="cc-sel" onchange="updCC('${a.id}','${l.id}',this.value)" title="Código alternativo (Chino)">`;
