@@ -506,12 +506,12 @@ const INSTRUCTIVO=[
    o:"F.931, Excel de la liquidación del mes (y del SAC en junio y diciembre), boleta de FAECYS y facturas del SEC.",
    p:["<b>Debe — SUELDOS Y JORNALES:</b> la <b>Remuneración 9</b> del F.931.",
       "<b>Debe — CARGAS SOCIALES:</b> es ƒ, la diferencia para que el asiento cierre.",
-      "<b>Debe — CREDITO FISCAL DTO 814:</b> se carga a mano. Como Cargas Sociales es la diferencia, al cargar el 814 Cargas Sociales baja en el mismo importe.",
+      "<b>Debe — CREDITO FISCAL DTO 814:</b> el <b>3,8% de la Remuneración 1</b> del F.931. Como Cargas Sociales es la diferencia, baja en el mismo importe. Ese mismo importe va al Haber del asiento de I.V.A. del mes, restando del crédito fiscal de la DDJJ.",
       "<b>Haber — REMUNERACIONES A PAGAR:</b> la columna <b>Importe</b> (la última) del Excel de la liquidación. En junio y diciembre se le suma el Importe del Excel del SAC.",
       "<b>Haber — CARGAS SOCIALES A PAGAR:</b> el total de <b>Montos que se ingresan</b> del F.931 (aportes y contribuciones).",
       "<b>Haber — FAECYS A PAGAR:</b> el monto total a depositar de la boleta de FAECYS (primer vencimiento).",
       "<b>Haber — SEC A PAGAR:</b> de las facturas del SEC; por ahora a mano. Si hay retenciones para depositar, se agregan con «+ Agregar línea»."],
-   x:"Todo se puede traer desde <b>Importar → Sueldos</b>: subís juntos el F.931, el Excel del mes, el del SAC y la boleta de FAECYS, y cada uno completa su línea en el asiento de su mes. El SEC, las retenciones y el DTO 814 quedan a mano."},
+   x:"Todo se puede traer desde <b>Importar → Sueldos</b>: subís juntos el F.931, el Excel del mes, el del SAC y la boleta de FAECYS, y cada uno completa su línea en el asiento de su mes (el F.931 completa también el DTO 814). El SEC y las retenciones quedan a mano."},
   {t:"POR LAS COMPRAS",
    o:"Libro I.V.A. Compras del mes.",
    p:["<b>Debe — COMPRAS:</b> mercadería de reventa, por el Total menos el IVA de cada comprobante.",
@@ -1791,13 +1791,18 @@ function parse931(ls){
   // El importe de la Rem. 9 a veces queda en el renglón de abajo de la etiqueta
   const rem9=valEtiqueta(ls,/Suma\s+de\s+Rem\.\s*9\s*:/i);
   if(!rem9)throw new Error("no encontré la Remuneración 9");
+  // DTO 814: el crédito fiscal de IVA es el 3,8% de la Remuneración 1
+  const rem1=valEtiqueta(ls,/Suma\s+de\s+Rem\.\s*1\s*:/i)||0;
+  const c814=Math.round((rem1*PCT_814/100+Number.EPSILON)*100)/100;
   const y=parseInt(mp[2],10),m=parseInt(mp[1],10)-1;
   const per=perDeFecha(y,m);
   if(per<0)throw fueraDeEj(y,m);
-  return{k:"f931",per,tipo:T_SUELDOS,
-    patches:[{cuenta:"SUELDOS Y JORNALES",t:"D",monto:rem9},{cuenta:"CARGAS SOCIALES A PAGAR",t:"H",monto:contrib+aportes}],
-    x:{rem9,contrib,aportes},
-    nota:"F.931 &middot; Sueldos y Jornales = Remuneración 9 ("+fmtD(rem9)+") &middot; Cargas Sociales a Pagar = montos que se ingresan: aportes "+fmtD(aportes)+" + contribuciones "+fmtD(contrib)+" = "+fmtD(contrib+aportes)};
+  const patches=[{cuenta:"SUELDOS Y JORNALES",t:"D",monto:rem9},{cuenta:"CARGAS SOCIALES A PAGAR",t:"H",monto:contrib+aportes}];
+  if(c814)patches.push({cuenta:"CREDITO FISCAL DTO 814",t:"D",monto:c814});
+  return{k:"f931",per,tipo:T_SUELDOS,patches,
+    x:{rem9,rem1,c814,contrib,aportes},
+    nota:"F.931 &middot; Sueldos y Jornales = Remuneración 9 ("+fmtD(rem9)+") &middot; Cargas Sociales a Pagar = montos que se ingresan: aportes "+fmtD(aportes)+" + contribuciones "+fmtD(contrib)+" = "+fmtD(contrib+aportes)+
+      (c814?" &middot; Crédito Fiscal DTO 814 = "+String(PCT_814).replace(".",",")+"% de la Remuneración 1 ("+fmtD(rem1)+") = "+fmtD(c814):"")};
 }
 // Boleta de FAECYS (DDJJ de aportes sindicales, la que genera el sitio de FAECYS).
 // Los importes vienen sin separador de miles ("175950,93").
@@ -1948,7 +1953,8 @@ function armarPropPDF(leidos,errores){
     if((m===5||m===11)&&tiene("sueldo")&&!tiene("sac")&&!dobles[per+"|"+T_SUELDOS+"|sac"]&&!(E.apm[per]||[]).some(a=>a.tipo===T_SUELDOS&&a.remComp&&a.remComp.sac))
       av.push(perLabel(per)+": es mes de SAC y no subiste el Excel del aguinaldo. Si lo subís después, se suma a Remuneraciones a Pagar.");
   });
-  if(meses.length)av.push("En el asiento de sueldos Cargas Sociales es la diferencia. El SEC, el DTO 814 y las retenciones se cargan a mano en el asiento.");
+  items.filter(it=>it.k==="f931"&&!it.x.c814).forEach(it=>av.push(perLabel(it.per)+": "+esc(it.archivo||"F.931")+": no encontré la Remuneración 1, así que el Crédito Fiscal DTO 814 queda para cargar a mano."));
+  if(meses.length)av.push("En el asiento de sueldos Cargas Sociales es la diferencia. El SEC y las retenciones se cargan a mano en el asiento.");
   E.imp.errs=errores;
   E.imp.prop=items.length?{origen:"pdf",items}:null;
   E.imp.avisos=av;E.imp.acc={};
@@ -3278,11 +3284,11 @@ function render(){
     else if(sub==="f931"){
       h+=caja("Subí los archivos de sueldos del mes",
         "Cada archivo completa su línea del asiento <b>Por devengamiento de sueldos</b> de su mes:"+
-        "<br>&bull; <b>F.931 (PDF)</b>: Sueldos y Jornales al Debe con la <b>Remuneración 9</b>, y Cargas Sociales a Pagar al Haber con el total de <b>Montos que se ingresan</b>."+
+        "<br>&bull; <b>F.931 (PDF)</b>: Sueldos y Jornales al Debe con la <b>Remuneración 9</b>, Crédito Fiscal DTO 814 al Debe con el <b>3,8% de la Remuneración 1</b>, y Cargas Sociales a Pagar al Haber con el total de <b>Montos que se ingresan</b>."+
         "<br>&bull; <b>Excel de la liquidación</b>: Remuneraciones a Pagar con la suma de la columna <b>Importe</b>."+
         "<br>&bull; <b>Excel del SAC</b> (junio y diciembre): se suma a Remuneraciones a Pagar del mismo mes."+
         "<br>&bull; <b>Boleta de FAECYS (PDF)</b>: FAECYS a Pagar con el monto total a depositar (primer vencimiento). Tiene que ser el PDF que baja de la web, no uno escaneado."+
-        "<br>Cargas Sociales es la diferencia. El SEC, el DTO 814 y las retenciones se cargan a mano en el asiento. <b>Podés seleccionar todos los archivos juntos</b>, de uno o varios meses.",
+        "<br>Cargas Sociales es la diferencia. El 814 pasa solo al asiento de I.V.A. del mes. El SEC y las retenciones se cargan a mano en el asiento. <b>Podés seleccionar todos los archivos juntos</b>, de uno o varios meses.",
         ".pdf,.xlsx,.xls","impArchivo931","",true);
     }
     else if(sub==="reten"){
