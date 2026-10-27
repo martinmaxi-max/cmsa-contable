@@ -375,7 +375,9 @@ const PL={
     {n:"RETEN. Y PERCEP. IIBB",t:"H"},
     {n:"D.G.R. INGRESOS BRUTOS A PAGAR",t:"H",formula:true,swing:"iibb"},
     {n:"SDO. FAVOR IMP A LOS INGRESOS BRUTOS",t:"D",formula:true,swing:"iibb"}],
-  "POR EGRESOS BANCARIOS - SANTANDER":[
+  // Un asiento por banco y por mes: egresos al Debe, ingresos al Haber y la
+  // cuenta del banco como línea de cierre que se ubica sola del lado que haga falta.
+  "POR MOVIMIENTOS BANCARIOS - BANCO SANTANDER":[
     {n:"I.V.A. A PAGAR",t:"D"},{n:"PROVEEDORES",t:"D"},{n:"CARGAS SOCIALES A PAGAR",t:"D"},
     {n:"REMUNERACIONES A PAGAR",t:"D"},{n:"RETEN. Y PERCEP. I.V.A.",t:"D"},
     {n:"BANCO SANTANDER PRESTAMO 614",t:"D"},{n:"BANCO SANTANDER PRESTAMO 406",t:"D"},
@@ -388,25 +390,21 @@ const PL={
     {n:"PLAN DE AHORRO RODADOS",t:"D"},{n:"ANTICIPOS DE GANANCIAS",t:"D"},
     {n:"D.G.R. INGRESOS BRUTOS A PAGAR",t:"D"},{n:"CTA PARTICULAR CARLOS MARTIN",t:"D"},
     {n:"CTA PARTICULAR MAXIMILIANO MARTIN",t:"D"},{n:"CTA PARTICULAR RODOLFO MARTIN",t:"D"},
-    {n:"BANCO SANTANDERCTA. CTE.",t:"H",formula:true}],
-  "POR EGRESOS BANCARIOS - CREDICOOP":[
+    {n:"DEUDORES POR VENTAS",t:"H"},{n:"CAJA",t:"H"},
+    {n:"BANCO SANTANDERCTA. CTE.",t:"H",formula:true,autoLado:true}],
+  "POR MOVIMIENTOS BANCARIOS - BANCO CREDICOOP":[
     {n:"PROVEEDORES",t:"D"},{n:"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)",t:"D"},
     {n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"D"},{n:"COMISIONES Y GTOS. BANCARIOS",t:"D"},
-    {n:"RETEN. Y PERCEP. IIBB",t:"D"},{n:"BANCO CREDICOOP CTA CTE",t:"H",formula:true}],
-  "POR EGRESOS BANCARIOS - GALICIA":[
+    {n:"RETEN. Y PERCEP. IIBB",t:"D"},
+    {n:"DEUDORES POR VENTAS",t:"H"},
+    {n:"BANCO CREDICOOP CTA CTE",t:"H",formula:true,autoLado:true}],
+  "POR MOVIMIENTOS BANCARIOS - BANCO GALICIA":[
     {n:"PROVEEDORES",t:"D"},{n:"IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)",t:"D"},
     {n:"COMISIONES Y GTOS. BANCARIOS",t:"D"},{n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"D"},
     {n:"RETEN. Y PERCEP. I.V.A.",t:"D"},{n:"RETEN. Y PERCEP. IIBB",t:"D"},
-    {n:"PRESTAMOS GALICIA 643",t:"D"},{n:"BANCO GALICIA CTA. CTE.",t:"H",formula:true}],
-  "POR INGRESOS BANCARIOS - SANTANDER":[
-    {n:"BANCO SANTANDERCTA. CTE.",t:"D",formula:true},
-    {n:"DEUDORES POR VENTAS",t:"H"},{n:"CAJA",t:"H"}],
-  "POR INGRESOS BANCARIOS - CREDICOOP":[
-    {n:"BANCO CREDICOOP CTA CTE",t:"D",formula:true},
-    {n:"DEUDORES POR VENTAS",t:"H"}],
-  "POR INGRESOS BANCARIOS - GALICIA":[
-    {n:"BANCO GALICIA CTA. CTE.",t:"D",formula:true},
-    {n:"DEUDORES POR VENTAS",t:"H"}],
+    {n:"PRESTAMOS GALICIA 643",t:"D"},{n:"INTERESES FINANCIEROS",t:"D"},{n:"INVERSIONES",t:"D"},
+    {n:"DEUDORES POR VENTAS",t:"H"},
+    {n:"BANCO GALICIA CTA. CTE.",t:"H",formula:true,autoLado:true}],
   "POR ASIENTO I.V.A. DEL MES":[
     {n:"I.V.A. DÉBITO FISCAL",t:"D"},{n:"D.G.I. I.V.A. CRÉDITO FISCAL",t:"H"},
     {n:"CREDITO FISCAL DTO 814",t:"H"},{n:"I.V.A. A PAGAR",t:"H",formula:true},
@@ -480,19 +478,15 @@ const INSTRUCTIVO=[
       "Las dos últimas líneas son un <b>par de vuelco</b> y las calcula el sistema: si el determinado supera a lo retenido se llena <b>D.G.R. INGRESOS BRUTOS A PAGAR</b> (Haber); si lo retenido es mayor se llena <b>SDO. FAVOR IMP A LOS INGRESOS BRUTOS</b> (Debe).",
       "El PDF de la DDJJ se importa desde <b>Importar → IIBB</b>: además de cargar los dos importes, cruza el saldo a favor del mes anterior contra el que viene arrastrando el sistema."],
    x:"Nunca se llenan las dos líneas del vuelco a la vez. Si aparecen las dos con importe, revisá que no haya quedado un importe cargado a mano en alguna."},
-  {t:"POR EGRESOS BANCARIOS — SANTANDER / GALICIA / CREDICOOP",
-   o:"Extracto bancario del mes, columna de débitos.",
-   p:["Cargá el <b>neto del mes por cuenta de destino</b>, no movimiento por movimiento: proveedores, préstamos, impuestos, comisiones, seguros, honorarios, planes de pago, etc. Todo va al <b>Debe</b>.",
-      "La <b>cuenta del banco</b> es la línea ƒ del Haber: sale sola y equivale al total de egresos del mes.",
+  {t:"POR MOVIMIENTOS BANCARIOS — BANCO SANTANDER / GALICIA / CREDICOOP",
+   o:"Extracto bancario del mes: débitos y créditos.",
+   p:["Un solo asiento por banco y por mes. Se carga el <b>neto del mes por cuenta</b>, no movimiento por movimiento.",
+      "<b>Debe:</b> las cuentas cuyo neto es salida de plata: proveedores, préstamos, impuestos, comisiones, seguros, honorarios, planes de pago, etc.",
+      "<b>Haber:</b> las cuentas cuyo neto es entrada de plata: cobranzas de clientes en <b>DEUDORES POR VENTAS</b>, depósitos de fondos de caja en <b>CAJA</b>, etc.",
+      "La <b>cuenta del banco</b> es la línea ƒ: sale por diferencia entre Debe y Haber y se ubica sola. Si en el mes salió más de lo que entró va al Haber; si entró más, al Debe.",
       "El impuesto al débito y crédito bancario va en <b>IMP. A LOS DÉBITOS Y CRÉDITOS BANCARIOS (A)</b>, y el IVA de comisiones en <b>D.G.I. I.V.A. CRÉDITO FISCAL</b>.",
-      "Se puede generar automáticamente desde la pestaña <b>Importar</b> con el Excel de movimientos: agrupa por mes y cuenta, netea débitos contra créditos y arma el asiento."],
+      "Se genera desde <b>Importar → Banco</b> con el Excel de movimientos: agrupa por mes y cuenta, netea y arma el asiento. Si el Excel trae meses que ya están cargados para ese banco, esos se omiten y solo se generan los nuevos."],
    x:"Cada banco tiene su propia plantilla porque las cuentas que se mueven son distintas. Elegí la del banco correcto: la línea ƒ ya viene apuntada a esa cuenta."},
-  {t:"POR INGRESOS BANCARIOS — SANTANDER / GALICIA / CREDICOOP",
-   o:"Extracto bancario del mes, columna de créditos.",
-   p:["<b>Haber — DEUDORES POR VENTAS:</b> cobranzas de clientes acreditadas o transferidas.",
-      "<b>Haber — CAJA:</b> cuando el ingreso es un depósito de fondos que ya estaban en caja.",
-      "La <b>cuenta del banco</b> en el Debe es ƒ: la calcula el sistema."],
-   x:"Si el mismo mes tiene ingresos y egresos del mismo banco, van en dos asientos separados. El importador ya los separa así."},
   {t:"POR ASIENTO I.V.A. DEL MES",
    o:"DDJJ de I.V.A. del período (F.2002).",
    p:["<b>Debe — I.V.A. DÉBITO FISCAL:</b> débito fiscal del período. De acá lo toma el asiento de Ventas del mes.",
@@ -507,7 +501,7 @@ const INSTRUCTIVO=[
    p:["<b>Debe — SEC / INACAP / FAECYS:</b> aportes y contribuciones sindicales pagados.",
       "<b>Debe — PROVEEDORES:</b> pagos a proveedores hechos en efectivo.",
       "<b>Haber — CAJA:</b> es ƒ, total desembolsado."],
-   x:"Lo que se pagó por banco no va acá: va en el asiento de egresos bancarios del banco que corresponda."},
+   x:"Lo que se pagó por banco no va acá: va en el asiento de movimientos bancarios del banco que corresponda."},
   {t:"POR DEVENGAMIENTO DE SUELDOS",
    o:"F.931, Excel de la liquidación del mes (y del SAC en junio y diciembre), boleta de FAECYS y facturas del SEC.",
    p:["<b>Debe — SUELDOS Y JORNALES:</b> la <b>Remuneración 9</b> del F.931.",
@@ -530,8 +524,8 @@ const INSTRUCTIVO=[
   {t:"POR COBRO DE VENTAS EN CUENTA CORRIENTE",
    o:"Recibos de cobranza del mes y certificados de retención sufridos.",
    p:["<b>Haber — DEUDORES POR VENTAS:</b> se carga a mano, es el total de la cobranza imputada a la cuenta corriente.",
-      "<b>Debe — RETEN. Y PERCEP. IIBB:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de devengamiento de impuestos provinciales y municipales del mes, menos el Debe de esa cuenta en los asientos de egresos bancarios de Santander, Galicia y Credicoop.",
-      "<b>Debe — RETEN. Y PERCEP. I.V.A.:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de I.V.A. del mes, menos el Debe de esa cuenta en los asientos de egresos bancarios.",
+      "<b>Debe — RETEN. Y PERCEP. IIBB:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de devengamiento de impuestos provinciales y municipales del mes, menos el Debe de esa cuenta en los asientos de movimientos bancarios de Santander, Galicia y Credicoop.",
+      "<b>Debe — RETEN. Y PERCEP. I.V.A.:</b> se calcula sola. Es el Haber de esa cuenta en el asiento de I.V.A. del mes, menos el Debe de esa cuenta en los asientos de movimientos bancarios.",
       "<b>Debe — RETENCIONES SUSS / RETENCIONES GANANCIAS:</b> se importan desde <b>Importar → Retenciones</b> con el Excel de ARCA. Suma todas las filas del archivo (retenciones, percepciones y devoluciones, con su signo), las totaliza por mes según la fecha de retención y carga cada mes en su asiento; se puede importar por tandas (por ejemplo seis meses y después los otros seis).",
       "<b>Debe — CAJA:</b> es ƒ, Deudores por Ventas menos todas las retenciones del Debe.",
       "El asiento se va armando solo: aparece como <b>parcial</b> en cuanto alguna de sus cuentas tiene importe, y cierra cuando cargás Deudores por Ventas.",
@@ -542,7 +536,7 @@ const INSTRUCTIVO=[
    p:["<b>Debe — I.V.A. A PAGAR</b> (o el impuesto que se regulariza): capital incluido en el plan.",
       "<b>Debe — INTERESES FINANCIEROS:</b> intereses de financiación del plan.",
       "<b>Haber — PLAN DE PAGOS AFIP:</b> es ƒ, deuda total consolidada."],
-   x:"Las cuotas mensuales del plan no van acá: se cargan como débito del banco en el asiento de egresos bancarios, contra la cuenta del plan."},
+   x:"Las cuotas mensuales del plan no van acá: se cargan como débito del banco en el asiento de movimientos bancarios, contra la cuenta del plan."},
   {t:"POR COMPENSACION",
    o:"Solicitud de compensación de saldos AFIP (F.798).",
    p:["<b>Debe — ANTICIPOS DE GANANCIAS</b> u otro saldo a favor que se aplica.",
@@ -599,6 +593,7 @@ function dbVacia(){
     ejercicios:[{id:"j1",emp:"e1",nom:"2026",ini:"2026-01",meses:12}],
     cuentas:MC_BASE.map(x=>({...x})),
     mapCompras:{...MAP_COMPRAS_BASE},
+    mapBanco:{},
     saldos:{j1:JSON.parse(JSON.stringify(SALDOS_CMSA))},
     asientos:{j1:{}}};
 }
@@ -635,7 +630,7 @@ const CLIENT_ID=(()=>{
 const DOC_CFG=()=>fb.db.collection("config").doc("general");
 const DOC_EJ=id=>fb.db.collection("ejercicios").doc(id);
 const COL_MESES=id=>DOC_EJ(id).collection("meses");
-const cfgPlano=()=>({v:DB.v,empresas:DB.empresas,ejercicios:DB.ejercicios,cuentas:DB.cuentas,mapCompras:DB.mapCompras});
+const cfgPlano=()=>({v:DB.v,empresas:DB.empresas,ejercicios:DB.ejercicios,cuentas:DB.cuentas,mapCompras:DB.mapCompras,mapBanco:DB.mapBanco});
 
 function estado(tipo,txt){
   const el=document.getElementById("saveInd");if(!el)return;
@@ -713,6 +708,7 @@ async function arrancarNube(){
     }
     if(!DB.cuentas||!DB.cuentas.length)DB.cuentas=MC_BASE.map(x=>({...x}));
     if(!DB.mapCompras)DB.mapCompras={...MAP_COMPRAS_BASE};
+    if(!DB.mapBanco)DB.mapBanco={};
     MC=DB.cuentas;
     _sync.cfg=JSON.stringify(cfgPlano());
     escucharCfg();
@@ -755,7 +751,7 @@ function escucharCfg(){
     const j=d.datos||"";
     if(j===_sync.cfg)return;
     const c=JSON.parse(j);
-    DB.empresas=c.empresas;DB.ejercicios=c.ejercicios;DB.cuentas=c.cuentas;DB.mapCompras=c.mapCompras;
+    DB.empresas=c.empresas;DB.ejercicios=c.ejercicios;DB.cuentas=c.cuentas;DB.mapCompras=c.mapCompras;DB.mapBanco=c.mapBanco||{};
     MC=DB.cuentas;_sync.cfg=j;
     avisarOtro();render();
   },err=>estado("err",err.message));
@@ -984,6 +980,13 @@ function saldoCuentaHastaMes(cuenta,mesLimite){
 function calcFormula(asiento, lineaFormula){
   const otrasD=asiento.lineas.filter(l=>l.id!==lineaFormula.id&&!l.formula).reduce((s,l)=>s+pn(l.debe),0);
   const otrasH=asiento.lineas.filter(l=>l.id!==lineaFormula.id&&!l.formula).reduce((s,l)=>s+pn(l.haber),0);
+  // Lado automático (cuenta del banco en Movimientos Bancarios): si salió más de
+  // lo que entró el banco va al Haber; si entró más, al Debe.
+  if(lineaFormula.autoLado){
+    const net=Math.round((otrasD-otrasH)*100)/100;
+    lineaFormula._t=net<0?"D":"H";
+    return Math.abs(net);
+  }
   if(lineaFormula._t==="D") return Math.max(0, otrasH - otrasD);
   else return Math.max(0, otrasD - otrasH);
 }
@@ -993,7 +996,7 @@ function crA(t){
   const ls=p.length?p.map(x=>({
     id:nid(),cuenta:x.n,codigo:cod(x.n),ccodigo:ccod(x.n),debe:"",haber:"",
     _t:x.t,formula:x.formula||false,autoSplit:x.autoSplit!=null?x.autoSplit:null,swing:x.swing||null,
-    cruce:x.cruce||null
+    cruce:x.cruce||null,autoLado:x.autoLado||false
   })):[{id:nid(),cuenta:"",codigo:"",ccodigo:"XXXXX",debe:"",haber:"",_t:"",formula:false,autoSplit:null,swing:null}];
   return{id:nid(),tipo:t,lineas:ls,col:false,manualAuto:null};
 }
@@ -1092,9 +1095,9 @@ const IMP_SUBS=[
   {k:"iva",l:"IVA"},{k:"f931",l:"Sueldos"},{k:"reten",l:"Retenciones"}];
 
 const BANCOS_IMPORT={
-  SANTANDER:{cuentaBanco:"BANCO SANTANDERCTA. CTE.",tipoIngreso:"POR INGRESOS BANCARIOS - SANTANDER",tipoEgreso:"POR EGRESOS BANCARIOS - SANTANDER",label:"Banco Santander"},
-  GALICIA:{cuentaBanco:"BANCO GALICIA CTA. CTE.",tipoIngreso:"POR INGRESOS BANCARIOS - GALICIA",tipoEgreso:"POR EGRESOS BANCARIOS - GALICIA",label:"Banco Galicia"},
-  CREDICOOP:{cuentaBanco:"BANCO CREDICOOP CTA CTE",tipoIngreso:"POR INGRESOS BANCARIOS - CREDICOOP",tipoEgreso:"POR EGRESOS BANCARIOS - CREDICOOP",label:"Banco Credicoop"},
+  SANTANDER:{cuentaBanco:"BANCO SANTANDERCTA. CTE.",tipoMov:"POR MOVIMIENTOS BANCARIOS - BANCO SANTANDER",label:"Banco Santander"},
+  GALICIA:{cuentaBanco:"BANCO GALICIA CTA. CTE.",tipoMov:"POR MOVIMIENTOS BANCARIOS - BANCO GALICIA",label:"Banco Galicia"},
+  CREDICOOP:{cuentaBanco:"BANCO CREDICOOP CTA CTE",tipoMov:"POR MOVIMIENTOS BANCARIOS - BANCO CREDICOOP",label:"Banco Credicoop"},
 };
 const EXCLUIR="__EXCLUIR__";
 const PCT_814=3.80; // % de la Remuneración 1 del F.931 computable como crédito fiscal de IVA
@@ -1103,7 +1106,7 @@ const MAP_COMPRAS_BASE={"PROVEEDORES":"COMPRAS","GASTOS BANCO":"COMISIONES Y GTO
 
 function impSub(k){E.imp.sub=k;impReset();render();}
 function impSetBank(b){E.imp.bank=b;impReset();render();}
-function impReset(){E.imp.archivo="";E.imp.prop=null;E.imp.avisos=[];E.imp.acc={};E.imp.raw=null;E.imp.err="";E.imp.errs=[];E.imp.prog="";_impTok++;}
+function impReset(){E.imp.crear=null;E.imp.archivo="";E.imp.prop=null;E.imp.avisos=[];E.imp.acc={};E.imp.raw=null;E.imp.err="";E.imp.errs=[];E.imp.prog="";_impTok++;}
 function impCancelar(){impReset();render();}
 
 // ─── LECTURA DE ARCHIVOS ─────────────────────────────────────────────────────
@@ -1207,6 +1210,12 @@ function buildDesdePlantilla(tipo,valores,meta){
     const cuenta=k.slice(0,p),lado=k.slice(p+1);
     const v=valores[k];
     let l=a.lineas.find(x=>x.cuenta===cuenta&&x._t===lado&&!x.formula);
+    // Si la plantilla tiene la cuenta del otro lado y vacía, se usa esa misma línea
+    // (ej. INVERSIONES al Debe en un mes con más rescates que suscripciones).
+    if(!l){
+      l=a.lineas.find(x=>x.cuenta===cuenta&&x._t!==lado&&!x.formula&&!x.cruce&&!x.swing&&!x.autoSplit&&!pn(x.debe)&&!pn(x.haber));
+      if(l)l._t=lado;
+    }
     if(!l){
       l={id:nid(),cuenta,codigo:cod(cuenta),ccodigo:ccod(cuenta),debe:"",haber:"",
          _t:lado,formula:false,autoSplit:null,swing:null};
@@ -1233,6 +1242,7 @@ function cf814DelMes(per){
   return v;
 }
 function recalcDerivados(a,per){
+  a.lineas.forEach(l=>{if(l.formula&&l.autoLado)calcFormula(a,l);});
   if(a.ddjjContrib!=null){
     const l8=a.lineas.find(l=>l.cuenta==="CREDITO FISCAL DTO 814"&&l._t==="D");
     const lc=a.lineas.find(l=>l.cuenta==="CARGAS SOCIALES"&&l._t==="D");
@@ -1283,12 +1293,12 @@ function ventasVincular(aid){
 // Deudores por Ventas (Haber) se carga a mano. Las retenciones de IIBB e IVA
 // salen de cruzar otros asientos del mismo mes:
 //   Reten. IIBB = Haber en el devengamiento de imp. provinciales
-//                 - Debe en los egresos bancarios (Santander, Galicia, Credicoop)
+//                 - Debe en los movimientos bancarios (Santander, Galicia, Credicoop)
 //   Reten. IVA  = Haber en el asiento de IVA del mes
-//                 - Debe en los egresos bancarios
+//                 - Debe en los movimientos bancarios
 // SUSS y Ganancias se importan. Caja es la línea de cierre: Deudores - retenciones.
 const T_COBRO="POR COBRO DE VENTAS EN CUENTA CORRIENTE";
-const T_EGR="POR EGRESOS BANCARIOS - ";
+const T_EGR="POR MOVIMIENTOS BANCARIOS - ";
 const T_VENTAS="POR VENTAS DEL MES S/ LIBRO I.V.A.";
 // en: asiento donde vive la línea calculada · lado: de qué lado va ·
 // origen: asiento del que se trae · directo: se copia tal cual (sin restar bancos)
@@ -1315,7 +1325,7 @@ function detalleCruce(k,per){
       if(esOrigen)base+=valLinea(a,l,c.directo?"D":"H");
       else{
         const v=valLinea(a,l,"D");
-        if(v){const b=tipo.slice(T_EGR.length);bancos[b]=(bancos[b]||0)+v;egr+=v;}
+        if(v){const b=tipo.slice(T_EGR.length).replace(/^BANCO\s+/,"");bancos[b]=(bancos[b]||0)+v;egr+=v;}
       }
     });
   });
@@ -1379,6 +1389,12 @@ function cobroMigrar(aid){
 
 // ─── CONFIRMACIÓN GENÉRICA ───────────────────────────────────────────────────
 function impAcc(i,v){E.imp.acc[i]=v;render();}
+// Qué se hace por defecto con cada mes. En banco los meses ya cargados se
+// omiten (los extractos se importan a mes cerrado, así que se toman las diferencias).
+function impAccDef(it){
+  if(!impYaHay(it))return "agregar";
+  return(E.imp.prop&&E.imp.prop.origen==="banco")?"omitir":"reemplazar";
+}
 function impExiste(per,tipo){return (E.apm[per]||[]).some(a=>a.tipo===tipo);}
 // Algunos importadores no arman el asiento entero sino que completan líneas
 // sueltas de un asiento que se va armando de a partes (retenciones en el cobro
@@ -1441,10 +1457,16 @@ function impAplicarPatch(a,pt,acc){
 }
 function impConfirmar(){
   const p=E.imp.prop;if(!p||!p.items.length)return;
-  let n=0,primerPer=null;const tocados=new Set();
+  if(p.bloqueo){alert(p.bloqueo);return;}
+  // Al confirmar, las cuentas encontradas por nombre parecido quedan guardadas
+  if(p.origen==="banco"&&E.imp.raw&&E.imp.raw.revisar){
+    if(!DB.mapBanco)DB.mapBanco={};
+    E.imp.raw.revisar.forEach(c=>{const inf=mapBancoInfo(c);if(inf.como==="parecida")DB.mapBanco[c]=inf.dest;});
+  }
+  let n=0,omit=0,primerPer=null;const tocados=new Set();
   p.items.forEach((it,idx)=>{
-    const acc=E.imp.acc[idx]||(impYaHay(it)?"reemplazar":"agregar");
-    if(acc==="omitir")return;
+    const acc=E.imp.acc[idx]||impAccDef(it);
+    if(acc==="omitir"){omit++;return;}
     const lista=[...(E.apm[it.per]||[])];
     if(impPatches(it)){
       let a=lista.find(x=>x.tipo===it.tipo);
@@ -1472,7 +1494,7 @@ function impConfirmar(){
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v==="carga"));
   }
   render();
-  alert(n?("Importación completa: "+n+" asiento(s)."+
+  alert(n?("Importación completa: "+n+" asiento(s)."+(omit?" Se omitieron "+omit+" mes(es) que ya estaban cargados.":"")+
     (parc?"\nAdemás se armaron "+parc+" asiento(s) parciales de cobro de ventas en cuenta corriente con las retenciones que ya se pueden calcular.":""))
     :"No se importó nada: todos los meses estaban en Omitir.");
 }
@@ -1486,46 +1508,113 @@ function impArchivoBanco(input){
       const cfg=BANCOS_IMPORT[E.imp.bank];
       const hi=rows.findIndex(r=>r&&r.some(c=>/^cuenta$/i.test(String(c||"").trim())));
       if(hi<0)throw new Error("no encontré la columna 'cuenta'");
-      const H=rows[hi].map(c=>String(c||"").trim().toLowerCase());
-      const iM=H.findIndex(h=>h==="mes"||h==="fecha"),iC=H.indexOf("cuenta"),iI=H.findIndex(h=>h.includes("importe"));
-      if(iM<0||iI<0)throw new Error("faltan las columnas 'mes' e 'Importe Pesos'");
-      const agg={};let fuera=0,ilegibles=0;const noEnc=new Set();
+      // Encabezados sin tildes ni mayúsculas. Dos formatos de importe:
+      //  - una sola columna "Importe" con signo (Santander): positivo entra, negativo sale;
+      //  - columnas "Débito" y "Crédito" separadas (Credicoop): el débito resta y el crédito suma.
+      const H=rows[hi].map(c=>normCta(c));
+      const iM=H.findIndex(h=>h==="MES"||h==="FECHA"),iC=H.indexOf("CUENTA");
+      const iD=H.findIndex(h=>h==="DEBITO"||h==="DEBITOS"),iCr=H.findIndex(h=>h==="CREDITO"||h==="CREDITOS");
+      const porCols=iD>=0&&iCr>=0;
+      const iI=porCols?-1:H.findIndex(h=>h.indexOf("IMPORTE")>=0);
+      if(iM<0)throw new Error("falta la columna 'mes' o 'Fecha'");
+      if(!porCols&&iI<0)throw new Error("no encontré el importe: se espera una columna 'Importe' o las columnas 'Débito' y 'Crédito'");
+      const agg={};let fuera=0,ilegibles=0;
       for(let r=hi+1;r<rows.length;r++){
         const f2=rows[r];if(!f2)continue;
         const ym=ymCelda(f2[iM]);
         const cta=String(f2[iC]==null?"":f2[iC]).trim();
-        const v=numExcel(f2[iI]);
+        const v=porCols?Math.abs(numExcel(f2[iCr]))-Math.abs(numExcel(f2[iD])):numExcel(f2[iI]);
         if(!cta||!v)continue;
         if(!ym){ilegibles++;continue;}
         const per=perDeFecha(ym.y,ym.m);
         if(per<0){fuera++;continue;}
-        if(!cod(cta))noEnc.add(cta);
         const k=per+"|"+cta;agg[k]=(agg[k]||0)+v;
       }
-      const porPer={};
-      Object.keys(agg).forEach(k=>{
-        const i=k.indexOf("|"),per=parseInt(k.slice(0,i)),cta=k.slice(i+1),v=agg[k];
-        if(Math.abs(v)<0.01)return;
-        (porPer[per]=porPer[per]||{})[cta]=v;
-      });
-      const items=[];
-      Object.keys(porPer).map(Number).sort((a,b)=>a-b).forEach(per=>{
-        const ing={},egr={};let hayI=false,hayE=false;
-        Object.keys(porPer[per]).forEach(c=>{
-          const v=porPer[per][c];
-          if(v>0){ing[c+"|H"]=v;hayI=true;}else{egr[c+"|D"]=-v;hayE=true;}
-        });
-        if(hayI)items.push({per,tipo:cfg.tipoIngreso,valores:ing});
-        if(hayE)items.push({per,tipo:cfg.tipoEgreso,valores:egr});
-      });
-      const av=[];
-      if(fuera)av.push(fuera+" movimientos quedaron afuera: su fecha no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+").");
-      if(ilegibles)av.push(ilegibles+" filas tienen una fecha que no pude interpretar.");
-      if(noEnc.size)av.push("Cuentas que no están en el Plan de Cuentas: "+[...noEnc].join(", ")+". Se importan igual pero quedan sin código.");
-      E.imp.prop={origen:"banco",items};E.imp.avisos=av;E.imp.acc={};
+      E.imp.raw={origen:"banco",agg,fuera,ilegibles};
+      E.imp.crear=null;E.imp.prop=null;E.imp.acc={};
+      construirBanco();
       render();
     }catch(err){impError("No pude procesar el archivo: "+err.message);}
   });
+}
+
+// ─── Equivalencia de cuentas del banco ───────────────────────────────────────
+// Cada nombre de la columna "cuenta" del Excel tiene que terminar en una cuenta
+// del Plan de Cuentas, así ninguna línea entra sin código. Orden de búsqueda:
+// 1) la equivalencia guardada, 2) el nombre exacto, 3) el mismo nombre sin
+// tener en cuenta mayúsculas, tildes, puntos ni espacios (si hay una sola así).
+function normCta(t){
+  return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+}
+function mapBancoInfo(nombre){
+  const m=DB.mapBanco||{};
+  if(m[nombre]&&MC.some(x=>x.n===m[nombre]))return{dest:m[nombre],como:"guardada"};
+  if(MC.some(x=>x.n===nombre))return{dest:nombre,como:"exacta"};
+  const k=normCta(nombre),cand=MC.filter(x=>normCta(x.n)===k);
+  if(cand.length===1)return{dest:cand[0].n,como:"parecida"};
+  return{dest:"",como:""};
+}
+function construirBanco(){
+  const raw=E.imp.raw;if(!raw||raw.origen!=="banco")return;
+  const cfg=BANCOS_IMPORT[E.imp.bank];
+  const porPer={},nombres=new Set();
+  Object.keys(raw.agg).forEach(k=>{
+    const i=k.indexOf("|"),per=parseInt(k.slice(0,i)),cta=k.slice(i+1);
+    nombres.add(cta);
+    const dest=mapBancoInfo(cta).dest;if(!dest)return;
+    const pp=porPer[per]=porPer[per]||{};
+    pp[dest]=(pp[dest]||0)+raw.agg[k];
+  });
+  // Se muestran solo las que hay que resolver o confirmar; las exactas y las ya guardadas no.
+  raw.revisar=[...nombres].filter(c=>{const k=mapBancoInfo(c).como;return k==="parecida"||k==="";}).sort();
+  raw.faltan=raw.revisar.filter(c=>!mapBancoInfo(c).dest);
+  const items=[];
+  Object.keys(porPer).map(Number).sort((a,b)=>a-b).forEach(per=>{
+    // Neto positivo = entró plata (cuenta al Haber); negativo = salió (al Debe).
+    const val={};
+    Object.keys(porPer[per]).forEach(c=>{
+      const v=porPer[per][c];
+      if(Math.abs(v)<0.01)return;
+      if(v>0)val[c+"|H"]=v;else val[c+"|D"]=-v;
+    });
+    if(Object.keys(val).length)items.push({per,tipo:cfg.tipoMov,valores:val});
+  });
+  const av=[];
+  if(raw.fuera)av.push(raw.fuera+" movimientos quedaron afuera: su fecha no cae dentro del ejercicio "+ejLabel()+" ("+ejRango(getEj())+").");
+  if(raw.ilegibles)av.push(raw.ilegibles+" filas tienen una fecha que no pude interpretar.");
+  if(raw.faltan.length)av.push(raw.faltan.length+" cuenta(s) del Excel no están en el Plan de Cuentas. Asignalas a una cuenta existente o creálas en el cuadro <b>Cuentas a revisar</b> para poder importar.");
+  const ya=items.filter(it=>impExiste(it.per,it.tipo));
+  if(ya.length)av.push(ya.length+" de "+items.length+" mes(es) ya tienen cargado el asiento de "+esc(cfg.label)+" ("+ya.map(it=>perLabel(it.per)).join(", ")+"): se omiten y solo se generan los que faltan. Si querés rehacer alguno, marcalo en Reemplazar.");
+  const accPrev=(E.imp.prop&&E.imp.prop.origen==="banco")?E.imp.acc:{};
+  E.imp.prop={origen:"banco",items,bloqueo:raw.faltan.length?"Antes de importar asigná o creá las cuentas que no están en el Plan de Cuentas.":""};
+  E.imp.avisos=av;E.imp.acc=accPrev||{};
+}
+function mapBancoSet(i,v){
+  const raw=E.imp.raw;if(!raw)return;
+  const nombre=raw.revisar[i];if(nombre===undefined)return;
+  if(v==="__NUEVA__"){E.imp.crear=i;return render();}
+  E.imp.crear=null;
+  if(!DB.mapBanco)DB.mapBanco={};
+  if(v)DB.mapBanco[nombre]=v;else delete DB.mapBanco[nombre];
+  construirBanco();render();
+}
+function bancoCrearCta(i){
+  const raw=E.imp.raw;if(!raw)return;
+  const nombre=raw.revisar[i];if(nombre===undefined)return;
+  const n=(document.getElementById("bc-n")?.value||"").trim().toUpperCase();
+  const c=(document.getElementById("bc-c")?.value||"").trim()||"XXXXX";
+  const cc=document.getElementById("bc-cc")?.value||"XXXXX";
+  if(!n){alert("Poné el nombre de la cuenta.");return;}
+  if(MC.some(x=>x.n===n)){alert("Ya existe una cuenta con ese nombre: elegila de la lista.");return;}
+  if(c==="XXXXX"&&cc==="XXXXX"&&!confirm("La cuenta queda sin código propio y sin código chino, así que en el formato chino va a salir como XXXXX.\n\n¿Crearla igual?"))return;
+  MC=[...MC,{n,c,cc}];DB.cuentas=MC;
+  if(!DB.mapBanco)DB.mapBanco={};
+  DB.mapBanco[nombre]=n;
+  E.imp.crear=null;
+  construirBanco();render();
+}
+function opcChino(cur){
+  return PLAN_CHINO.filter(p=>p.imp).map(p=>`<option value="${esc(p.c)}" ${cur===p.c?"selected":""}>${esc(p.c)} - ${esc(p.d)}</option>`).join("");
 }
 
 // ─── 2. COMPRAS ──────────────────────────────────────────────────────────────
@@ -2464,6 +2553,7 @@ function render(){
       h+=`<div class="card"><div class="card-head">
         <span class="badge bl">#${ai+1}</span>
         <select class="tipo-sel" onchange="chgT('${a.id}',this.value)">`;
+      if(TIPOS.indexOf(a.tipo)<0)h+=`<option value="${esc(a.tipo)}" selected disabled>${esc(a.tipo)} (plantilla eliminada)</option>`;
       TIPOS.forEach(t=>h+=`<option value="${esc(t)}" ${a.tipo===t?"selected":""}>${esc(t)}</option>`);
       h+=`</select>`;
       const esCobro=a.tipo===T_COBRO&&!cobroViejo(a);
@@ -2511,7 +2601,7 @@ function render(){
           if(!cruceActivo(l)||CRUCES[l.cruce].en!==T_COBRO)return;
           const c=CRUCES[l.cruce],d=detalleCruce(l.cruce,E.mes);
           const bs=Object.keys(d.bancos).map(b=>nomB(b)+" "+fmtD(d.bancos[b])).join(" &middot; ");
-          fr+=`<div>&#x192; <b>${esc(c.cuenta)}</b> = Haber en ${esc(c.corto)} <b>${fmtD(d.base)}</b> &minus; Debe en egresos bancarios <b>${fmtD(d.egr)}</b>${bs?" ("+bs+")":""} = <b>${fmtD(d.valor)}</b>`+
+          fr+=`<div>&#x192; <b>${esc(c.cuenta)}</b> = Haber en ${esc(c.corto)} <b>${fmtD(d.base)}</b> &minus; Debe en movimientos bancarios <b>${fmtD(d.egr)}</b>${bs?" ("+bs+")":""} = <b>${fmtD(d.valor)}</b>`+
             (!d.hayOrigen?` <span style="color:#b45309">&mdash; todavía no está cargado el ${esc(c.corto)} de este mes</span>`:
              d.dif<0?` <span style="color:#b91c1c">&mdash; &#x26A0; la diferencia da negativa (${fmtD(d.dif)}): queda en cero, revisalo</span>`:"")+`</div>`;
         });
@@ -2578,16 +2668,16 @@ function render(){
 
           // Campos debe/haber
           if(l.formula&&l._t==="D"){
-            h+=`<td><input class="ii d formula" value="${fmtN(dv)||"auto"}" disabled title="${l.swing?"Calculado (vuelco): solo aparece si genera saldo a favor":"Calculado automáticamente"}"/></td>`;
+            h+=`<td><input class="ii d formula" value="${fmtN(dv)||"auto"}" disabled title="${l.autoLado?"Diferencia entre Debe y Haber: va al Debe si entró más de lo que salió":l.swing?"Calculado (vuelco): solo aparece si genera saldo a favor":"Calculado automáticamente"}"/></td>`;
             h+=`<td><input class="ii h" value="" disabled/></td>`;
           } else if(l.formula&&l._t==="H"){
             h+=`<td><input class="ii d" value="" disabled/></td>`;
-            h+=`<td><input class="ii h formula" value="${fmtN(hv)||"auto"}" disabled title="${l.swing?"Calculado (vuelco): solo aparece si queda monto a pagar":"Calculado automáticamente"}"/></td>`;
+            h+=`<td><input class="ii h formula" value="${fmtN(hv)||"auto"}" disabled title="${l.autoLado?"Diferencia entre Debe y Haber: va al Haber si salió más de lo que entró":l.swing?"Calculado (vuelco): solo aparece si queda monto a pagar":"Calculado automáticamente"}"/></td>`;
           } else if(cz&&CRUCES[l.cruce].lado==="H"){
             h+=`<td><input class="ii d" value="" disabled/></td>`;
             h+=`<td><input class="ii h formula" value="${fmtN(pn(l.haber))||"auto"}" disabled title="Se trae sola: Debe de esta cuenta en el ${esc(CRUCES[l.cruce].corto)}. El botón &#x192; la pasa a carga manual."/></td>`;
           } else if(cz){
-            h+=`<td><input class="ii d formula" value="${fmtN(pn(l.debe))||"auto"}" disabled title="Se calcula sola: Haber en ${esc(CRUCES[l.cruce].corto)} menos Debe en los egresos bancarios. El botón &#x192; la pasa a carga manual."/></td>`;
+            h+=`<td><input class="ii d formula" value="${fmtN(pn(l.debe))||"auto"}" disabled title="Se calcula sola: Haber en ${esc(CRUCES[l.cruce].corto)} menos Debe en los movimientos bancarios. El botón &#x192; la pasa a carga manual."/></td>`;
             h+=`<td><input class="ii h" value="" disabled/></td>`;
           } else if(l.derivado){
             h+=`<td><input class="ii d formula" value="${l._t==="D"?fmtN(pn(l.debe)):""}" disabled title="Se calcula solo: importe de la DDJJ menos el crédito fiscal del DTO 814"/></td>`;
@@ -3099,8 +3189,36 @@ function render(){
       Object.keys(BANCOS_IMPORT).forEach(k=>bh+=`<button class="btn ${E.imp.bank===k?"primary":""} sm" onclick="impSetBank('${k}')">${esc(BANCOS_IMPORT[k].label)}</button>`);
       bh+=`</div>`;
       h+=caja("2. Subí el Excel de movimientos",
-        "Columnas esperadas: <b>mes</b> (fecha del movimiento), <b>cuenta</b> (nombre exacto del Plan de Cuentas) e <b>Importe Pesos</b>. Los movimientos de una misma cuenta y mes se netean entre sí: si el neto queda positivo va al asiento de Ingresos, si queda negativo al de Egresos. La cuenta del banco se calcula sola por diferencia.",
+        "Columnas esperadas: <b>mes</b> o <b>Fecha</b> (fecha del movimiento), <b>cuenta</b> (nombre del Plan de Cuentas; si alguna no coincide, te pide asignarla o crearla) y el importe, que puede venir de dos formas: una columna <b>Importe</b> con signo (Santander), o columnas <b>Débito</b> y <b>Crédito</b> separadas (Credicoop), donde el débito resta y el crédito suma. La columna Saldo no se usa. Los movimientos de una misma cuenta y mes se netean entre sí y se arma <b>un solo asiento por mes</b>: si el neto de la cuenta queda negativo (salió plata) va al Debe, si queda positivo (entró) al Haber. La cuenta del banco se calcula sola por diferencia y se ubica del lado que corresponda. Podés subir un Excel con varios meses: los que ya tienen su asiento de ese banco se omiten y solo se generan los que faltan.",
         ".xlsx,.xls","impArchivoBanco",bh);
+      const rb=E.imp.raw;
+      if(rb&&rb.origen==="banco"&&rb.revisar&&rb.revisar.length){
+        h+=`<div class="card" style="padding:14px;margin-bottom:12px${rb.faltan.length?";border-color:#fca5a5":""}">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">Cuentas a revisar</div>
+          <div class="mini" style="margin-bottom:10px">Nombres del Excel que no coinciden exacto con el Plan de Cuentas. Lo que elijas se guarda, así que la próxima vez se reconocen solas.</div>
+          <table class="emp"><thead><tr><th>En el Excel</th><th style="width:380px">Se imputa a</th></tr></thead><tbody>`;
+        rb.revisar.forEach((c,i)=>{
+          const inf=mapBancoInfo(c),creando=E.imp.crear===i;
+          const est=inf.como==="parecida"?`<div class="mini" style="color:#92400e;margin-top:3px">Encontrada por nombre parecido. Si es esta, no toques nada: al importar queda guardada.</div>`:
+                    !inf.dest&&!creando?`<div class="mini" style="color:#991b1b;margin-top:3px">&#x2717; No está en el Plan de Cuentas.</div>`:"";
+          h+=`<tr><td>${esc(c)}${est}</td><td>
+            <select class="fi" style="width:100%" onchange="mapBancoSet(${i},this.value)">
+              <option value="" ${!inf.dest&&!creando?"selected":""}>&mdash; elegir &mdash;</option>
+              <option value="__NUEVA__" ${creando?"selected":""}>&#xFF0B; Crear cuenta nueva&hellip;</option>
+              ${MC.map(m=>`<option value="${esc(m.n)}" ${!creando&&inf.dest===m.n?"selected":""}>${esc(m.n)}</option>`).join("")}
+            </select>`;
+          if(creando){
+            h+=`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;padding:8px;background:#f8fafc;border-radius:6px">
+              <input id="bc-n" class="fi" value="${esc(String(c).toUpperCase())}" placeholder="Nombre de la cuenta">
+              <input id="bc-c" class="fi" placeholder="Código propio">
+              <select id="bc-cc" class="fi">${opcChino("XXXXX")}</select>
+              <div style="display:flex;gap:6px"><button class="btn primary sm" onclick="bancoCrearCta(${i})">Crear y asignar</button>
+              <button class="btn sm" onclick="E.imp.crear=null;render()">Cancelar</button></div></div>`;
+          }
+          h+=`</td></tr>`;
+        });
+        h+=`</tbody></table></div>`;
+      }
     }
     else if(sub==="compras"){
       h+=caja("Subí el resumen de compras",
@@ -3185,10 +3303,10 @@ function render(){
             <button class="btn sm" onclick="impAccTodos('omitir')">Omitir todos</button>`:""}
           <div style="flex:1"></div>
           <button class="btn sm" onclick="impCancelar()">Cancelar</button>
-          <button class="btn primary sm" onclick="impConfirmar()">&#x2713; Confirmar e importar</button></div>`;
+          <button class="btn primary sm" onclick="impConfirmar()" ${p.bloqueo?`disabled title="${esc(p.bloqueo)}"`:""}>&#x2713; Confirmar e importar</button></div>`;
         p.items.forEach((it,idx)=>{
           const existe=impYaHay(it);
-          const acc=E.imp.acc[idx]||(existe?"reemplazar":"agregar");
+          const acc=E.imp.acc[idx]||impAccDef(it);
           h+=`<div class="card"><div class="card-head">
             <span class="badge bl">${esc(perLabel(it.per))}</span>
             <span style="font-size:12px;font-weight:600">${esc(it.tipo)}</span>
@@ -3198,7 +3316,7 @@ function render(){
             const op=(v,l)=>`<label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;margin-left:8px">
               <input type="radio" name="acc${idx}" ${acc===v?"checked":""} onchange="impAcc(${idx},'${v}')"> ${l}</label>`;
             const pp=!!impPatches(it);
-            h+=`<span class="badge am">${pp?"Ya tiene "+fmtD(impPatchActual(it)):"Ya existe"}</span>`+
+            h+=`<span class="badge am">${pp?"Ya tiene "+fmtD(impPatchActual(it)):p.origen==="banco"?"Ya cargado":"Ya existe"}</span>`+
                op("reemplazar",pp?"Reemplazar importe":"Reemplazar")+
                op(pp?"sumar":"agregar",pp?"Sumar":"Agregar otro")+
                op("omitir","Omitir");
@@ -3226,7 +3344,7 @@ function render(){
             const sd=ks.filter(k=>k.endsWith("|D")).reduce((s,k)=>s+it.valores[k],0);
             const sh=ks.filter(k=>k.endsWith("|H")).reduce((s,k)=>s+it.valores[k],0);
             h+=`<tr style="background:#f1f5f9;font-weight:700"><td></td>
-              <td>Línea de cierre (se calcula sola)</td>
+              <td>Línea de cierre (se calcula sola${sd!==sh?" &middot; va al "+(sd>sh?"Haber":"Debe"):""})</td>
               <td style="text-align:right;font-family:monospace">${fmtD(Math.abs(sd-sh))}</td></tr>`;
           }
           h+=`</tbody></table></div>`;
@@ -3272,6 +3390,7 @@ function boot(){
   if(!DB.asientos)DB.asientos={};
   if(!DB.cuentas||!DB.cuentas.length)DB.cuentas=MC_BASE.map(x=>({...x}));
   if(!DB.mapCompras)DB.mapCompras={...MAP_COMPRAS_BASE};
+  if(!DB.mapBanco)DB.mapBanco={};
   MC=DB.cuentas;
   activarEjercicio(DB.ejercicios.length?DB.ejercicios[0].id:null);
   render();
