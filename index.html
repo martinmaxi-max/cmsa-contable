@@ -139,6 +139,7 @@ table.emp tr:nth-child(even){background:#f8fafc;}
   <button class="nav-btn" data-v="chino" onclick="sv('chino')">Formato Chino</button>
   <button class="nav-btn" data-v="mayores" onclick="sv('mayores')">Mayores</button>
   <button class="nav-btn" data-v="mayorchino" onclick="sv('mayorchino')">Mayor Chino</button>
+  <button class="nav-btn" data-v="control" onclick="sv('control')">Control</button>
   <button class="nav-btn" data-v="saldos" onclick="sv('saldos')">Saldos</button>
   <button class="nav-btn" data-v="cuentas" onclick="sv('cuentas')">Cuentas</button>
   <button class="nav-btn" data-v="importar" onclick="sv('importar')">Importar</button>
@@ -410,7 +411,7 @@ const PL={
     {n:"CREDITO FISCAL DTO 814",t:"H"},{n:"I.V.A. A PAGAR",t:"H",formula:true},
     {n:"RETEN. Y PERCEP. I.V.A.",t:"H"}],
   "POR PAGOS DEL MES":[
-    {n:"SEC A PAGAR",t:"D"},{n:"INACAP A PAGAR",t:"D"},{n:"FAECYS A PAGAR",t:"D"},
+    {n:"SEC A PAGAR",t:"D",cruce:"sec"},{n:"INACAP A PAGAR",t:"D"},{n:"FAECYS A PAGAR",t:"D",cruce:"faecys"},
     {n:"PROVEEDORES",t:"D"},{n:"CAJA",t:"H",formula:true}],
   "POR DEVENGAMIENTO DE SUELDOS":[
     {n:"SUELDOS Y JORNALES",t:"D"},{n:"CARGAS SOCIALES",t:"D",formula:true},{n:"CREDITO FISCAL DTO 814",t:"D"},
@@ -498,10 +499,10 @@ const INSTRUCTIVO=[
    x:"Si el período cierra con saldo técnico a favor, cambiá esa última línea a <b>D.G.I. I.V.A. SALDO A FAVOR</b> y pasala al Debe con el botón D/H, dejándola igual como ƒ."},
   {t:"POR PAGOS DEL MES",
    o:"Pagos efectuados por caja durante el mes.",
-   p:["<b>Debe — SEC / INACAP / FAECYS:</b> aportes y contribuciones sindicales pagados.",
+   p:["<b>Debe — SEC A PAGAR / FAECYS A PAGAR:</b> se calculan solos. Lo devengado en el asiento de sueldos de un mes se paga el mes siguiente: si en ese mes no hay pago por banco de esa cuenta, se toma como pagado en efectivo y sale de Caja acá. Si hubo pago por banco, no se agrega nada (aunque sea parcial: la diferencia queda pendiente y se ve en Control). En enero se compara contra el saldo de apertura. El botón ƒ pasa la línea a carga manual.",
       "<b>Debe — PROVEEDORES:</b> pagos a proveedores hechos en efectivo.",
       "<b>Haber — CAJA:</b> es ƒ, total desembolsado."],
-   x:"Lo que se pagó por banco no va acá: va en el asiento de movimientos bancarios del banco que corresponda."},
+   x:"Lo que se pagó por banco no va acá: va en el asiento de movimientos bancarios del banco que corresponda. Los pagos al sindicato por banco tienen que ir en el Excel con la cuenta <b>SEC A PAGAR</b> o <b>FAECYS A PAGAR</b> (no Proveedores) para que el sistema los reconozca."},
   {t:"POR DEVENGAMIENTO DE SUELDOS",
    o:"F.931, Excel de la liquidación del mes (y del SAC en junio y diciembre), boleta de FAECYS y facturas del SEC.",
    p:["<b>Debe — SUELDOS Y JORNALES:</b> la <b>Remuneración 9</b> del F.931.",
@@ -1030,6 +1031,8 @@ function updLRender(aid,lid,f,v){
     (E.apm[E.mes]||[]).forEach(x=>{if(x!==a)recalcDerivados(x,E.mes);});
     const t=String(a.tipo||"");
     if(t===CRUCES.iibb.origen||t===CRUCES.iva.origen||t.indexOf(T_EGR)===0)asegurarCobro(E.mes);
+    if(t.indexOf(T_EGR)===0)asegurarPagos(E.mes);
+    if(t===T_SUELDOS)asegurarPagos(E.mes+1);
   }
   render();
 }
@@ -1285,6 +1288,20 @@ function recalcDerivados(a,per){
     const lv=ventasSinVincular(a);
     if(lv&&Math.abs(detalleCruce("debfisc",per).valor-pn(lv.haber))<0.005){lv.cruce="debfisc";lv.cruceOff=false;}
   }
+  if(a.tipo===T_PAGOS){
+    // Asientos cargados antes: las líneas de SEC y FAECYS al Debe quedan vinculadas
+    a.lineas.forEach(l=>{
+      if(l.cruce||l.cruceOff||l.formula||l._t!=="D")return;
+      const k=Object.keys(CRUCES).find(k=>CRUCES[k].sind&&CRUCES[k].cuenta===l.cuenta);
+      if(k)l.cruce=k;
+    });
+    a.lineas.forEach(l=>{
+      if(!cruceActivo(l)||CRUCES[l.cruce].en!==T_PAGOS)return;
+      const primero=(E.apm[per]||[]).find(x=>x.tipo===a.tipo&&x.lineas.some(y=>y.cruce===l.cruce&&cruceActivo(y)));
+      const v=numStr((primero&&primero!==a)?0:detalleSind(l.cruce,per).valor);
+      if(l.debe!==v||l.haber!==""){l.debe=v;l.haber="";}
+    });
+  }
   if(a.tipo===T_COBRO||a.tipo===T_VENTAS){
     let cambio=false;
     a.lineas.forEach(l=>{
@@ -1324,13 +1341,18 @@ function ventasVincular(aid){
 const T_COBRO="POR COBRO DE VENTAS EN CUENTA CORRIENTE";
 const T_EGR="POR MOVIMIENTOS BANCARIOS - ";
 const T_VENTAS="POR VENTAS DEL MES S/ LIBRO I.V.A.";
+const T_PAGOS="POR PAGOS DEL MES";
 // en: asiento donde vive la línea calculada · lado: de qué lado va ·
 // origen: asiento del que se trae · directo: se copia tal cual (sin restar bancos)
 const CRUCES={
   iibb:{en:T_COBRO,lado:"D",cuenta:"RETEN. Y PERCEP. IIBB",origen:"POR DEVENGAMIENTO DE IMP. PROV. Y MUNICIPALES",corto:"devengamiento de imp. prov. y municipales"},
   iva:{en:T_COBRO,lado:"D",cuenta:"RETEN. Y PERCEP. I.V.A.",origen:"POR ASIENTO I.V.A. DEL MES",corto:"asiento de I.V.A. del mes"},
   // El débito fiscal de Ventas del mes es el Debe de esa cuenta en el asiento de IVA
-  debfisc:{en:T_VENTAS,lado:"H",cuenta:"I.V.A. DÉBITO FISCAL",origen:"POR ASIENTO I.V.A. DEL MES",corto:"asiento de I.V.A. del mes",directo:true}
+  debfisc:{en:T_VENTAS,lado:"H",cuenta:"I.V.A. DÉBITO FISCAL",origen:"POR ASIENTO I.V.A. DEL MES",corto:"asiento de I.V.A. del mes",directo:true},
+  // Sindicato: lo devengado en un mes se paga el mes siguiente. Si ese mes no hay
+  // pago por banco, se toma como pagado en efectivo (sale de Caja en Pagos del mes).
+  sec:{en:T_PAGOS,lado:"D",cuenta:"SEC A PAGAR",sind:true,corto:"devengamiento de sueldos del mes anterior"},
+  faecys:{en:T_PAGOS,lado:"D",cuenta:"FAECYS A PAGAR",sind:true,corto:"devengamiento de sueldos del mes anterior"}
 };
 function cruceActivo(l){return !!(l.cruce&&CRUCES[l.cruce]&&!l.cruceOff&&!l.formula&&l._t===CRUCES[l.cruce].lado);}
 function valLinea(a,l,lado){
@@ -1355,6 +1377,46 @@ function detalleCruce(k,per){
   });
   const dif=Math.round((base-egr)*100)/100;
   return{base,egr,bancos,dif,valor:Math.max(0,dif),hayOrigen};
+}
+// Pago del sindicato en el mes per: lo devengado en per-1 (en enero, el saldo de
+// apertura) contra lo pagado por banco en per. Sin pago por banco -> efectivo.
+// Si hubo pago por banco, aunque sea parcial, no se agrega nada en efectivo:
+// la diferencia queda pendiente y se ve en Control.
+function detalleSind(k,per){
+  const c=CRUCES[k];let dev=0,banco=0,hayBanco=false,hayDev=false;const bancos={};
+  if(per===0){
+    const si=SALDOS_INIT[c.cuenta];
+    dev=si?Math.max(0,(si.h||0)-(si.d||0)):0;hayDev=true;
+  }else(E.apm[per-1]||[]).forEach(a=>{
+    if(a.tipo!==T_SUELDOS)return;hayDev=true;
+    a.lineas.forEach(l=>{if(l.cuenta===c.cuenta)dev+=valLinea(a,l,"H");});
+  });
+  (E.apm[per]||[]).forEach(a=>{
+    const t=String(a.tipo||"");if(t.indexOf(T_EGR)!==0)return;
+    // Se decide recién con el Santander del mes cargado (es por donde se paga);
+    // los pagos se cuentan de cualquier banco.
+    if(t===BANCOS_IMPORT.SANTANDER.tipoMov)hayBanco=true;
+    a.lineas.forEach(l=>{
+      if(l.cuenta!==c.cuenta)return;
+      const v=valLinea(a,l,"D");
+      if(v){const b=t.slice(T_EGR.length).replace(/^BANCO\s+/,"");bancos[b]=(bancos[b]||0)+v;banco+=v;}
+    });
+  });
+  dev=Math.round(dev*100)/100;banco=Math.round(banco*100)/100;
+  const valor=(hayBanco&&banco<0.005&&dev>0)?dev:0;
+  return{dev,banco,bancos,hayBanco,hayDev,valor,pend:banco>0.005?Math.round((dev-banco)*100)/100:0};
+}
+// Si en el mes hay que registrar un pago del sindicato en efectivo y no existe
+// el asiento de Pagos del mes, se crea.
+function asegurarPagos(per){
+  if(per<0||per>=nPer())return false;
+  const lista=E.apm[per]||[];
+  if(lista.some(a=>a.tipo===T_PAGOS))return false;
+  if(!Object.keys(CRUCES).some(k=>CRUCES[k].sind&&detalleSind(k,per).valor>0))return false;
+  const a=crA(T_PAGOS);
+  E.apm={...E.apm,[per]:[...lista,a]};
+  recalcDerivados(a,per);
+  return true;
 }
 // Recalcula todo lo derivado del ejercicio abierto. Los cruces dependen de otros
 // asientos del mismo mes, así que se refrescan en cada render y no solo en el
@@ -1512,6 +1574,9 @@ function impConfirmar(){
   recalcTodos();
   let parc=0;
   tocados.forEach(per=>{if(asegurarCobro(per))parc++;});
+  let pagEf=0;
+  tocados.forEach(per=>{if(asegurarPagos(per))pagEf++;if(!tocados.has(per+1)&&asegurarPagos(per+1))pagEf++;});
+  if(pagEf)recalcTodos();
   impReset();
   if(primerPer!==null){
     E.vista="carga";E.mes=primerPer;
@@ -1519,7 +1584,8 @@ function impConfirmar(){
   }
   render();
   alert(n?("Importación completa: "+n+" asiento(s)."+(omit?" Se omitieron "+omit+" mes(es) que ya estaban cargados.":"")+
-    (parc?"\nAdemás se armaron "+parc+" asiento(s) parciales de cobro de ventas en cuenta corriente con las retenciones que ya se pueden calcular.":""))
+    (parc?"\nAdemás se armaron "+parc+" asiento(s) parciales de cobro de ventas en cuenta corriente con las retenciones que ya se pueden calcular.":"")+
+    (pagEf?"\nSe armaron "+pagEf+" asiento(s) de Pagos del mes con pagos del sindicato en efectivo (meses sin pago por banco).":""))
     :"No se importó nada: todos los meses estaban en Omitir.");
 }
 
@@ -1639,6 +1705,99 @@ function bancoCrearCta(i){
 }
 function opcChino(cur){
   return PLAN_CHINO.filter(p=>p.imp).map(p=>`<option value="${esc(p.c)}" ${cur===p.c?"selected":""}>${esc(p.c)} - ${esc(p.d)}</option>`).join("");
+}
+
+// ─── CONTROL DE CUENTAS QUE SE CANCELAN ──────────────────────────────────────
+// sig: se devengan en el mes y se pagan en el mismo o el siguiente. Cierran si el
+//      saldo a fin de mes es 0 o igual a lo devengado en ese mes.
+// mes: se cancelan dentro del mismo mes. Cierran si el saldo a fin de mes es 0.
+const CTRL_CTAS=[
+  {n:"REMUNERACIONES A PAGAR",k:"sig",g:"Sueldos"},
+  {n:"CARGAS SOCIALES A PAGAR",k:"sig",g:"Sueldos"},
+  {n:"SEC A PAGAR",k:"sig",g:"Sueldos"},
+  {n:"FAECYS A PAGAR",k:"sig",g:"Sueldos"},
+  {n:"I.V.A. A PAGAR",k:"sig",g:"Impuestos"},
+  {n:"D.G.R. INGRESOS BRUTOS A PAGAR",k:"sig",g:"Impuestos"},
+  {n:"I.V.A. DÉBITO FISCAL",k:"mes",g:"Se cancelan en el mes"},
+  {n:"D.G.I. I.V.A. CRÉDITO FISCAL",k:"mes",g:"Se cancelan en el mes"},
+  {n:"CREDITO FISCAL DTO 814",k:"mes",g:"Se cancelan en el mes"},
+  {n:"RETEN. Y PERCEP. I.V.A.",k:"mes",g:"Se cancelan en el mes"},
+  {n:"RETEN. Y PERCEP. IIBB",k:"mes",g:"Se cancelan en el mes"}
+];
+const CTRL_TOL=0.02;
+function ctrlCuenta(c){
+  const si=SALDOS_INIT[c.n]||{d:0,h:0};
+  let saldo=(si.h||0)-(si.d||0); // positivo = saldo acreedor
+  const filas=[];
+  for(let per=0;per<nPer();per++){
+    const lista=E.apm[per]||[];
+    let hab=0,dBco=0,dOtr=0;const orig={};
+    lista.forEach(a=>{
+      const esB=String(a.tipo||"").indexOf(T_EGR)===0;
+      a.lineas.forEach(l=>{
+        if(l.cuenta!==c.n)return;
+        const dv=valLinea(a,l,"D"),hv=valLinea(a,l,"H");
+        hab+=hv;
+        if(esB)dBco+=dv;else dOtr+=dv;
+        if(dv||hv){const t=a.tipo||"(sin tipo)";orig[t]=orig[t]||{d:0,h:0};orig[t].d+=dv;orig[t].h+=hv;}
+      });
+    });
+    const ini=saldo;
+    saldo=Math.round((saldo+hab-dBco-dOtr)*100)/100;
+    let est,txt;
+    if(!lista.length){est="na";txt="Mes sin cargar";}
+    else if(Math.abs(saldo)<CTRL_TOL){est="ok";txt="Cierra";}
+    else if(c.k==="sig"&&saldo>0&&Math.abs(saldo-hab)<CTRL_TOL){est="pend";txt="Queda lo devengado del mes";}
+    else if(c.k==="sig"&&saldo<0){est="mal";txt="Saldo deudor: se pagó más de lo devengado"+(c.n==="REMUNERACIONES A PAGAR"?" (¿pago adelantado?)":"");}
+    else if(c.k==="sig"&&saldo>hab){est="mal";txt="Queda deuda de meses anteriores: "+fmtD(saldo-hab);}
+    else if(c.k==="sig"){est="mal";txt="Se pagó parte de lo devengado del mes: quedan "+fmtD(saldo);}
+    else{est="mal";txt="No cierra: queda saldo "+(saldo>0?"acreedor":"deudor")+" de "+fmtD(Math.abs(saldo));}
+    filas.push({per,ini,hab,dBco,dOtr,fin:saldo,est,txt,orig});
+  }
+  return filas;
+}
+function ctrlSel(i){E.ctrlCta=i;render();}
+function renderControl(){
+  const sal=v=>Math.abs(v)<CTRL_TOL?"0,00":fmtD(Math.abs(v))+(v>0?" H":" D");
+  const ico={ok:["gn","&#x2713;"],pend:["bl","&#x2713;"],mal:["rd","&#x2717;"],na:["","&middot;"]};
+  const datos=CTRL_CTAS.map(c=>({c,f:ctrlCuenta(c)}));
+  const conProb=datos.filter(d=>d.f.some(x=>x.est==="mal"));
+  let h=`<div class="toolbar"><h2>Control de cuentas que se cancelan &mdash; ${esc(empLabel())} &middot; Ejercicio ${esc(ejLabel())}</h2>
+    <span class="badge ${conProb.length?"rd":"gn"}">${conProb.length?conProb.length+" cuenta(s) no cierran":"&#x2713; Todas cierran"}</span></div>`;
+  h+=`<div class="mini" style="margin:-4px 0 10px;line-height:1.6">
+    <span class="badge gn">&#x2713;</span> saldo 0 &nbsp;
+    <span class="badge bl">&#x2713;</span> queda solo lo devengado en el mes (se paga el mes siguiente) &nbsp;
+    <span class="badge rd">&#x2717;</span> no cierra &nbsp;
+    <span class="badge">&middot;</span> mes sin cargar. Click en una cuenta para ver el detalle.</div>`;
+  h+=`<div class="card" style="overflow-x:auto;margin-bottom:14px"><table class="mt"><thead><tr><th style="text-align:left">Cuenta</th>`;
+  for(let p=0;p<nPer();p++)h+=`<th style="text-align:center">${esc(perLabel(p).slice(0,3))}</th>`;
+  h+=`<th>Saldo al cierre</th></tr></thead><tbody>`;
+  let g="";
+  datos.forEach((d,i)=>{
+    if(d.c.g!==g){g=d.c.g;h+=`<tr><td colspan="${nPer()+2}" style="background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b">${esc(g)}</td></tr>`;}
+    const sel=(E.ctrlCta||0)===i;
+    h+=`<tr style="cursor:pointer;${sel?"background:#eff6ff":""}" onclick="ctrlSel(${i})"><td style="text-align:left;font-weight:${sel?700:500}">${esc(d.c.n)}</td>`;
+    d.f.forEach(x=>{const k=ico[x.est];h+=`<td style="text-align:center" title="${esc(perLabel(x.per))}: ${esc(x.txt)} &middot; saldo ${sal(x.fin)}"><span class="badge ${k[0]}">${k[1]}</span></td>`;});
+    const ult=[...d.f].reverse().find(x=>x.est!=="na");
+    h+=`<td>${ult?sal(ult.fin):"&mdash;"}</td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  const d=datos[E.ctrlCta||0];
+  if(d){
+    h+=`<div class="toolbar"><h2 style="font-size:14px">${esc(d.c.n)}</h2>
+      <span class="mini">${d.c.k==="sig"?"Se devenga en el mes y se paga en el mismo mes o en el siguiente: cierra si a fin de mes el saldo es 0 o igual a lo devengado en el mes.":"Se cancela dentro del mismo mes: cierra si a fin de mes el saldo es 0."}</span></div>`;
+    h+=`<div class="card"><table class="mt"><thead><tr>
+      <th style="text-align:left">Mes</th><th>Saldo inicial</th><th>Haber${d.c.k==="sig"?" (devengado)":""}</th><th>Debe por banco</th><th>Debe otros asientos</th><th>Saldo final</th><th style="text-align:left">Estado</th></tr></thead><tbody>`;
+    d.f.forEach(x=>{
+      const col=x.est==="mal"?"#b91c1c":x.est==="na"?"#94a3b8":x.est==="pend"?"#1d4ed8":"#15803d";
+      const det=Object.keys(x.orig).map(t=>esc(t)+": "+(x.orig[t].d?"D "+fmtD(x.orig[t].d):"")+(x.orig[t].d&&x.orig[t].h?" / ":"")+(x.orig[t].h?"H "+fmtD(x.orig[t].h):"")).join("\n");
+      h+=`<tr title="${det}"><td style="text-align:left">${esc(perLabel(x.per))}</td><td>${sal(x.ini)}</td><td>${x.hab?fmtD(x.hab):""}</td><td>${x.dBco?fmtD(x.dBco):""}</td><td>${x.dOtr?fmtD(x.dOtr):""}</td>
+        <td style="font-weight:700">${sal(x.fin)}</td><td style="text-align:left;color:${col};font-size:12px">${esc(x.txt)}</td></tr>`;
+    });
+    h+=`</tbody></table></div>
+      <div class="mini" style="margin-top:6px">Pasá el mouse por un mes para ver de qué asientos sale cada importe.</div>`;
+  }
+  return h;
 }
 
 // ─── 2. COMPRAS ──────────────────────────────────────────────────────────────
@@ -2548,7 +2707,7 @@ function renderCtx(){
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render(){
   const app=document.getElementById("app");
-  if(!getEj()&&["carga","chino","mayores","mayorchino","saldos","importar"].indexOf(E.vista)>=0){
+  if(!getEj()&&["carga","chino","mayores","mayorchino","saldos","importar","control"].indexOf(E.vista)>=0){
     E.vista="empresas";
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v==="empresas"));
   }
@@ -2641,6 +2800,23 @@ function render(){
             (ec.excede?` <span style="color:#b91c1c">&mdash; &#x26A0; las retenciones superan a Deudores por Ventas en ${fmtD(ec.ret-ec.deud)}</span>`:"")+`</div>`;
         h+=`<div style="padding:7px 14px;background:#faf5ff;border-bottom:1px solid #ede9fe;font-size:11px;color:#4c1d95;line-height:1.7">${fr}</div>`;
       }
+      if(!a.col&&a.tipo===T_PAGOS&&a.lineas.some(l=>cruceActivo(l)&&CRUCES[l.cruce].sind)){
+        const ant=E.mes===0?"saldo de apertura":"devengado en "+perLabel(E.mes-1);
+        let fr="";
+        a.lineas.forEach(l=>{
+          if(!cruceActivo(l)||!CRUCES[l.cruce].sind)return;
+          const d=detalleSind(l.cruce,E.mes);
+          const bs=Object.keys(d.bancos).map(b=>b.charAt(0)+b.slice(1).toLowerCase()+" "+fmtD(d.bancos[b])).join(" &middot; ");
+          let r;
+          if(!d.dev)r=`no hay nada ${E.mes===0?"en el saldo de apertura":"devengado en "+perLabel(E.mes-1)}`;
+          else if(!d.hayBanco)r=`<span style="color:#b45309">todavía no está importado el Santander de este mes. Si al importarlo no aparece el pago, sale de caja.</span>`;
+          else if(d.valor)r=`no hay pago por banco en este mes &rarr; sale de caja <b>${fmtD(d.valor)}</b>`;
+          else if(Math.abs(d.pend)<0.005)r=`pagado por banco <b>${fmtD(d.banco)}</b> (${bs})`;
+          else r=`pagado por banco <b>${fmtD(d.banco)}</b> (${bs}) <span style="color:#b91c1c">&mdash; diferencia de ${fmtD(d.pend)} pendiente: revisala en Control</span>`;
+          fr+=`<div>&#x192; <b>${esc(l.cuenta)}</b>: ${ant} <b>${fmtD(d.dev)}</b> &middot; ${r}</div>`;
+        });
+        h+=`<div style="padding:7px 14px;background:#faf5ff;border-bottom:1px solid #ede9fe;font-size:11px;color:#4c1d95;line-height:1.7">${fr}</div>`;
+      }
       if(!a.col){
         h+=`<table class="lt"><thead><tr>
           <th style="width:32px"></th>
@@ -2706,6 +2882,9 @@ function render(){
           } else if(cz&&CRUCES[l.cruce].lado==="H"){
             h+=`<td><input class="ii d" value="" disabled/></td>`;
             h+=`<td><input class="ii h formula" value="${fmtN(pn(l.haber))||"auto"}" disabled title="Se trae sola: Debe de esta cuenta en el ${esc(CRUCES[l.cruce].corto)}. El botón &#x192; la pasa a carga manual."/></td>`;
+          } else if(cz&&CRUCES[l.cruce].sind){
+            h+=`<td><input class="ii d formula" value="${fmtN(pn(l.debe))||"auto"}" disabled title="Se calcula sola: lo devengado el mes anterior, si en este mes no hay pago por banco (se decide cuando está importado el Santander del mes). El botón &#x192; la pasa a carga manual."/></td>`;
+            h+=`<td><input class="ii h" value="" disabled/></td>`;
           } else if(cz){
             h+=`<td><input class="ii d formula" value="${fmtN(pn(l.debe))||"auto"}" disabled title="Se calcula sola: Haber en ${esc(CRUCES[l.cruce].corto)} menos Debe en los movimientos bancarios. El botón &#x192; la pasa a carga manual."/></td>`;
             h+=`<td><input class="ii h" value="" disabled/></td>`;
@@ -2801,6 +2980,9 @@ function render(){
     app.innerHTML=h;
   }
 
+  else if(E.vista==="control"){
+    app.innerHTML=renderControl();
+  }
   else if(E.vista==="mayores"){
     const rows=getMayores();const g=tGTodos();
     const mesesCargados=Object.keys(E.apm).filter(m=>(E.apm[m]||[]).length>0).map(m=>perLabel(parseInt(m)));
